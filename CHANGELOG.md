@@ -1,3 +1,30 @@
+## [1.0.6] - 2026-08-28
+
+### Added
+- Every form input in the CRUD and Search tabs now shows a hover/tooltip
+  `help=` text explaining what to fill in, derived from the
+  'TMC Herstellingen ASML' XLSX column semantics (and the Open
+  Protocol MID 0040 / 0060 byte layout for the tool fields).
+  Tooltips cover all 31 widgets across:
+    * CREATE form — Executor, SAP order, SAP status options, Status,
+      Date, Start time, End time, Tool serial, Controller serial,
+      Firmware, Protocol version, Total tightenings, Since service,
+      Tightening ID, Tightening status, Notes.
+    * UPDATE form — same 7 work-order fields + Notes.
+    * SEARCH form — Executor / Status / SAP order / Tool serial
+      "contains" boxes, Tightening status select, Max rows cap,
+      Work date from / to.
+- The tooltip text is centralised in a single `_HELP` dict at the top
+  of `app/streamlit_app.py`. Adding tooltips to new widgets is now:
+  `_HELP['new_key'] = '...'` once, then pass `help=_HELP['new_key']`
+  to the widget.
+
+### Notes
+- Pure UI change — no schema change, no behaviour change, no
+  dependency change. PATCH bump per SemVer (copy / wording /
+  tooltip addition).
+
+
 ## [1.0.5] - 2026-08-28
 
 ### Fixed

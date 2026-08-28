@@ -38,6 +38,104 @@ import app.protocol as protocol
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Field tooltips (hover-text on every form input)
+# ---------------------------------------------------------------------------
+# Tooltip text is derived from the 'TMC Herstellingen ASML' XLSX schema:
+# executor, status, SAP order, SAP status options, work date, start time,
+# end time. Open Protocol fields (tool serial, controller serial, firmware,
+# total tightenings, ...) are described from the Atlas Copco Open Protocol
+# MID 0040 / 0060 / 0080 spec.
+#
+# Pass help=_HELP.get('key', '') to every st.text_input / st.number_input /
+# st.selectbox / st.date_input / st.text_area call. Streamlit renders an
+# info-icon next to the label; the hover text matches the entry below.
+_HELP: dict[str, str] = {
+    # CREATE / UPDATE form
+    'executor':
+        "Person who performed the maintenance (XLSX column 'UITVOERDER'). "
+        "Free text, e.g. 'Sandro Mura' or 'Last First'. Required for audit trail.",
+    'sap_order':
+        "SAP work-order number (XLSX column 'ORDER SAP'). Alphanumeric code "
+        "such as 'FSTDEC8556'. Use '0000000000' if no SAP order applies.",
+    'sap_status_options':
+        "SAP system status flag (XLSX column 'STATUS OPTIES SAP'). "
+        "Often blank. Use whatever status string your SAP instance carries, "
+        "e.g. 'Released', 'In process', 'TECO'.",
+    'status':
+        "Current work-order status (XLSX column 'AFWERING STATUS'). "
+        "'Finished' = closed and signed off, "
+        "'In progress' = still being worked on, "
+        "'Cancelled' = no longer needed, "
+        "'Waiting for parts' = blocked on inventory.",
+    'work_date':
+        "Date the maintenance was performed (XLSX column 'DATUM'). Default: today. "
+        "Stored as ISO 8601 (YYYY-MM-DD); the XLSX sample uses M/D/YYYY (e.g. 9/8/2025).",
+    'start_time':
+        "When the work started (XLSX column 'BEGIN'). Free text HH:MM or HH:MM:SS "
+        "(e.g. '08:15' or '08:15:30'). Leave blank if not recorded.",
+    'end_time':
+        "When the work finished (XLSX column 'EIND'). Free text HH:MM or HH:MM:SS. "
+        "Leave blank if not recorded.",
+    'tool_serial':
+        "Atlas Copco / Power-Focus / Power-TEC tool serial number "
+        "(e.g. 'A4411212'). Auto-filled when this row was created by an "
+        "Open Protocol pull (MID 0040); leave blank for manual-only entries.",
+    'controller_serial':
+        "Atlas Copco controller serial this tool is paired with (e.g. 'ES512'). "
+        "Auto-filled from Open Protocol pull when available; blank otherwise.",
+    'firmware':
+        "Controller firmware version, e.g. '3.14.11.35838'. Sourced "
+        "automatically from MID 0040 when applicable.",
+    'protocol_version':
+        "Open Protocol revision the controller is speaking (e.g. '1.7'). "
+        "Detected from the first byte-pair on connect.",
+    'total_tightenings':
+        "Cumulative tightenings the tool has performed in its lifetime "
+        "(sometimes called 'cycle count'). Sourced from MID 0040 "
+        "byte-offset 60 in the Open Protocol frame.",
+    'tightenings_since_svc':
+        "Tightenings performed since the last calibration / service. "
+        "Used to schedule the next service. Sourced from MID 0040.",
+    'tightening_id':
+        "Unique identifier of the last tightening result "
+        "(e.g. 'T20260828-001'). Sourced from MID 0060; blank if no result is known.",
+    'tightening_status':
+        "Pass/fail state of the last tightening. "
+        "'OK' = torque and angle both inside tolerance, "
+        "'NOK' = one or both out of tolerance, "
+        "'Aborted' = tightening was stopped manually or by the controller.",
+    'notes':
+        "Free-text note about this maintenance event. Anything that helps "
+        "when reading the row back later — e.g. 'Reset torque to 60 Nm after "
+        "operator complaint'.",
+
+    # SEARCH form
+    'executor_search':
+        "Case-insensitive substring match on the executor field. "
+        "'mur' matches 'Sandro Mura'.",
+    'status_search':
+        "Case-insensitive substring match on the status field. "
+        "'cancel' matches 'Cancelled'.",
+    'sap_order_search':
+        "Case-insensitive substring match on the SAP order number. "
+        "'FST' matches 'FSTDEC8556'.",
+    'tool_serial_search':
+        "Case-insensitive substring match on the tool serial number.",
+    'tightening_status_search':
+        "Exact match on the tightening status (OK / NOK / Aborted) — leave as "
+        "the default blank option for 'don't care'.",
+    'max_rows':
+        "Cap on the number of rows returned (default 200, max 5000). "
+        "Lower this if your browser gets slow on big result sets.",
+    'work_date_from':
+        "Only return work performed on or after this date (inclusive).",
+    'work_date_to':
+        "Only return work performed on or before this date (inclusive).",
+}
+
+
 def _safe_df(rows: list[dict], index_col: str) -> pd.DataFrame:
     """Build a DataFrame keyed on `index_col`, even when `rows` is empty.
 
@@ -277,33 +375,33 @@ def _render_create_form() -> None:
         st.subheader('New maintenance entry')
         c1, c2, c3 = st.columns(3)
         with c1:
-            executor = st.text_input('Executor', placeholder='First Last')
-            sap_order = st.text_input('SAP order', placeholder='0000000000')
-            sap_status_options = st.text_input('SAP status options', placeholder='optional')
+            executor = st.text_input('Executor', placeholder='First Last', help=_HELP['executor'])
+            sap_order = st.text_input('SAP order', placeholder='0000000000', help=_HELP['sap_order'])
+            sap_status_options = st.text_input('SAP status options', placeholder='optional', help=_HELP['sap_status_options'])
         with c2:
             status_options = ['Finished', 'In progress', 'Cancelled', 'Waiting for parts']
-            status = st.selectbox('Status', status_options, index=0)
-            work_date = st.date_input('Date', value=date.today())
+            status = st.selectbox('Status', status_options, index=0, help=_HELP['status'])
+            work_date = st.date_input('Date', value=date.today(), help=_HELP['work_date'])
         with c3:
-            start_time = st.text_input('Start time', placeholder='HH:MM')
-            end_time   = st.text_input('End time',   placeholder='HH:MM')
+            start_time = st.text_input('Start time', placeholder='HH:MM', help=_HELP['start_time'])
+            end_time   = st.text_input('End time',   placeholder='HH:MM', help=_HELP['end_time'])
 
         st.markdown('**Optional Open Protocol fields**')
         d1, d2, d3, d4 = st.columns(4)
         with d1:
-            tool_serial = st.text_input('Tool serial')
-            controller_serial = st.text_input('Controller serial')
+            tool_serial = st.text_input('Tool serial', help=_HELP['tool_serial'])
+            controller_serial = st.text_input('Controller serial', help=_HELP['controller_serial'])
         with d2:
-            firmware = st.text_input('Firmware')
-            protocol_version = st.text_input('Protocol version')
+            firmware = st.text_input('Firmware', help=_HELP['firmware'])
+            protocol_version = st.text_input('Protocol version', help=_HELP['protocol_version'])
         with d3:
-            total_tightenings = st.number_input('Total tightenings', min_value=0, step=1, value=0)
-            tightenings_since_svc = st.number_input('Since service', min_value=0, step=1, value=0)
+            total_tightenings = st.number_input('Total tightenings', min_value=0, step=1, value=0, help=_HELP['total_tightenings'])
+            tightenings_since_svc = st.number_input('Since service', min_value=0, step=1, value=0, help=_HELP['tightenings_since_svc'])
         with d4:
-            tightening_id = st.text_input('Tightening ID')
-            tightening_status = st.selectbox('Tightening status', ['', 'OK', 'NOK', 'Aborted'], index=0)
+            tightening_id = st.text_input('Tightening ID', help=_HELP['tightening_id'])
+            tightening_status = st.selectbox('Tightening status', ['', 'OK', 'NOK', 'Aborted'], index=0, help=_HELP['tightening_status'])
 
-        notes = st.text_area('Notes')
+        notes = st.text_area('Notes', help=_HELP['notes'])
 
         if st.form_submit_button('Create'):
             payload = {
@@ -348,8 +446,8 @@ def _render_update_form() -> None:
     with st.form('update_form'):
         c1, c2, c3 = st.columns(3)
         with c1:
-            executor  = st.text_input('Executor', value=row.get('executor', '') or '')
-            sap_order = st.text_input('SAP order', value=row.get('sap_order', '') or '')
+            executor  = st.text_input('Executor', value=row.get('executor', '') or '', help=_HELP['executor'])
+            sap_order = st.text_input('SAP order', value=row.get('sap_order', '') or '', help=_HELP['sap_order'])
         with c2:
             status_opts = ['Finished', 'In progress', 'Cancelled', 'Waiting for parts']
             current = row.get('status') or 'Finished'
@@ -357,18 +455,18 @@ def _render_update_form() -> None:
                 idx = status_opts.index(current)
             except ValueError:
                 idx = 0
-            status = st.selectbox('Status', status_opts, index=idx)
+            status = st.selectbox('Status', status_opts, index=idx, help=_HELP['status'])
             wd = row.get('work_date') or date.today().isoformat()
             try:
                 wd_val = datetime.strptime(wd, '%Y-%m-%d').date()
             except ValueError:
                 wd_val = date.today()
-            work_date = st.date_input('Date', value=wd_val)
+            work_date = st.date_input('Date', value=wd_val, help=_HELP['work_date'])
         with c3:
-            start_time = st.text_input('Start time', value=row.get('start_time', '') or '')
-            end_time   = st.text_input('End time',   value=row.get('end_time', '') or '')
+            start_time = st.text_input('Start time', value=row.get('start_time', '') or '', help=_HELP['start_time'])
+            end_time   = st.text_input('End time',   value=row.get('end_time', '') or '', help=_HELP['end_time'])
 
-        notes = st.text_area('Notes', value=row.get('notes', '') or '')
+        notes = st.text_area('Notes', value=row.get('notes', '') or '', help=_HELP['notes'])
         if st.form_submit_button('Update'):
             updated = crud.update_log(choice, {
                 'executor':  executor,
@@ -460,18 +558,20 @@ def render_search_tab() -> None:
     with st.form('search_form'):
         c1, c2, c3 = st.columns(3)
         with c1:
-            executor      = st.text_input('Executor contains')
-            status        = st.text_input('Status contains')
-            sap_order     = st.text_input('SAP order contains')
+            executor      = st.text_input('Executor contains', help=_HELP['executor_search'])
+            status        = st.text_input('Status contains', help=_HELP['status_search'])
+            sap_order     = st.text_input('SAP order contains', help=_HELP['sap_order_search'])
         with c2:
-            tool_serial   = st.text_input('Tool serial contains')
+            tool_serial   = st.text_input('Tool serial contains', help=_HELP['tool_serial_search'])
             tightening_st = st.selectbox('Tightening status',
-                                          ['', 'OK', 'NOK', 'Aborted'], index=0)
+                                          ['', 'OK', 'NOK', 'Aborted'], index=0,
+                                          help=_HELP['tightening_status_search'])
             limit         = st.number_input('Max rows', min_value=1, max_value=5000,
-                                             value=200, step=50)
+                                             value=200, step=50,
+                                             help=_HELP['max_rows'])
         with c3:
-            d_from = st.date_input('Work date from', value=None)
-            d_to   = st.date_input('Work date to',   value=None)
+            d_from = st.date_input('Work date from', value=None, help=_HELP['work_date_from'])
+            d_to   = st.date_input('Work date to',   value=None, help=_HELP['work_date_to'])
 
         go = st.form_submit_button('Search')
 
