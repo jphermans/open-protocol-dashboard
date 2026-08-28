@@ -170,6 +170,30 @@ def die(msg: str, code: int = 1) -> None:
     sys.exit(code)
 
 
+def _read_version_from_init() -> str:
+    """Return the __version__ string from app/__init__.py WITHOUT importing
+    the app package. This lets `run.py --version` work even when SQLAlchemy
+    and Streamlit are not available in the current Python (e.g. system
+    Python instead of the .venv). Pure stdlib — ast + pathlib."""
+    import ast
+    init_path = PROJECT_DIR / "app" / "__init__.py"
+    if not init_path.exists():
+        die(f"Cannot read version: {init_path} is missing.")
+    tree = ast.parse(init_path.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id == "__version__"
+                    and isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)
+                ):
+                    return node.value.value
+    die(f"__version__ not found in {init_path}.")
+    return ""  # unreachable; die() exits
+
+
 def streamlit_is_installed(venv_dir: Path) -> bool:
     try:
         subprocess.check_call(
@@ -201,9 +225,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.version:
-        # Lazy import: the app package only matters when launching Streamlit.
-        from app import version_string
-        print(version_string())
+        # Self-contained — read __version__ straight from app/__init__.py,
+        # no SQLAlchemy / Streamlit / pandas import required.
+        v = _read_version_from_init()
+        print(f"Open Protocol CRUD Dashboard v{v}")
         return 0
 
     plat = detect_platform()

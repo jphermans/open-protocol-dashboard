@@ -1,3 +1,30 @@
+## [1.0.5] - 2026-08-28
+
+### Fixed
+- `python3 run.py --version` crashed with `ModuleNotFoundError: No
+  module named 'sqlalchemy'` when run with a Python that did not have
+  the project requirements installed (most commonly: system Python
+  on macOS instead of `.venv/bin/python`). Root cause: the `--version`
+  branch imported `version_string` from the `app` package, which
+  transitively imported `app.db`, which imports `sqlalchemy`. Fix:
+  two complementary changes.
+    1. `run.py` now reads `__version__` directly from `app/__init__.py`
+       via the stdlib `ast` module — zero `app` / `sqlalchemy` /
+       `streamlit` imports needed. `run.py --version` now works on any
+       Python 3.10+, regardless of whether the venv is set up.
+    2. `app/__init__.py` re-exports (`init_db`, `session_scope`,
+       `PROJECT_DIR`, `PLATFORM`, `get_database_url`, `is_sqlite`) are
+       now lazy via PEP 562 module `__getattr__`. Importing
+       `version_string` or `__version__` alone is now side-effect-free;
+       `sqlalchemy` is loaded only when CRUD / KPI code actually needs
+       it.
+
+### Changed
+- `app/__init__.py` docstring expanded to document the lazy-import
+  contract so future contributors know they can `from app import
+  __version__` without pulling in the whole stack.
+
+
 ## [1.0.4] - 2026-08-28
 
 ### Changed
