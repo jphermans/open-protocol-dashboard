@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+*.spec
+
+
+# Database (keep schema in code, ignore per-machine data)
+database.sqlite
+database.sqlite-journal
+database.sqlite-wal
+database.sqlite-shm
+*.db
+
+
+# Local config — never commit secrets
+.env
+.env.local
+*.local
+
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+
+# Logs
+*.log

@@ -1,0 +1,18 @@
+# Web framework + charting
+streamlit>=1.32
+pandas>=2.0
+
+# ORM + remote DB support (required for the CRUD layer and remote DB).
+sqlalchemy>=2.0
+
+# Optional drivers — uncomment the one you need for a remote DB.
+# Local SQLite (default) needs no driver — Python ships sqlite3.
+#
+# PostgreSQL (most common for production remote DBs):
+# psycopg[binary]>=3.1
+#
+# MySQL / MariaDB:
+# pymysql>=1.1
+#
+# Microsoft SQL Server:
+# pyodbc>=5.0
