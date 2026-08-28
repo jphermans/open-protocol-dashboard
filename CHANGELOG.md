@@ -1,3 +1,21 @@
+## [1.2.9] - 2026-08-28
+
+### Changed
+- **Documentation cleanup** — removed the four historical references to a
+  third-party adapter that this project does not depend on (it talked to
+  Atlas Copco controllers over the Open Protocol wire format, not to the
+  Scania Protocol Adapter). Affected spots:
+    * `app/protocol.py` module docstring (the `Tolerant of:` bullet that
+      mentioned the adapter prepending a leading NUL byte).
+    * `app/protocol.py::_recv_oped` docstring (the `Skips any leading NUL`
+      note).
+    * `README.md` features-grid row (the paragraph about tolerating NUL
+      prefixes on every frame).
+    * `README.md` Known Quirks table (the row that cited the adapter as
+      a motivating source for the NUL-byte tolerance).
+  All four now use neutral wording (`legacy gateways, test rigs, or
+  staging proxies`). No code change, no parser behaviour change.
+
 ## [1.2.8] - 2026-08-28
 
 ### Changed

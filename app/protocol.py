@@ -4,8 +4,8 @@ Supports MIDs 0001, 0003, 0010, 0030, 0040, 0060, 0080, 0270, 9999.
 
 Tolerant of:
   * multi-segment TCP responses (read full length-prefixed frame);
-  * the leading `\\x00` separator that ScaniaProtocolAdapter (and others)
-    prepend to every frame.
+  * a leading `\\x00` separator that some legacy gateways, test rigs,
+    or staging proxies prepend to every frame.
 
 Usage::
 
@@ -55,8 +55,10 @@ def _recv_exact(s: socket.socket, n: int) -> bytes:
 def _recv_oped(s: socket.socket) -> bytes:
     """Read a full Open Protocol frame using its 4-digit ASCII length header.
 
-    Skips any leading `\\x00` separator (used by ScaniaProtocolAdapter),
-    then reads exactly the number of bytes the controller declared.
+    Skips any leading `\\x00` separator if present. Some legacy
+    gateways, test rigs, and staging proxies prepend a NUL byte before
+    the 4-digit length field; the parser tolerates that and still reads
+    exactly the number of bytes the controller declared.
     """
     # 1. Skip leading NUL separators.
     first = _recv_exact(s, 1)

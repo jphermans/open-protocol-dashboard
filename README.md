@@ -80,7 +80,7 @@
 <table>
 <tr>
 <td>🔌 <b>Open Protocol</b></td>
-<td>Atlas Copco native protocol over raw TCP (port 4545). Reads multi-segment responses using the 4-digit ASCII length field. Tolerates the leading <code>\x00</code> separator that <code>ScaniaProtocolAdapter</code> prepends to every frame.</td>
+<td>Atlas Copco native protocol over raw TCP (port 4545). Reads multi-segment responses using the 4-digit ASCII length field. Tolerates the leading <code>\x00</code> separator that <code>legacy gateways / test rigs</code> prepends to every frame.</td>
 </tr>
 <tr>
 <td>� <b>SQLAlchemy ORM</b></td>
@@ -471,7 +471,7 @@ Antivirus false positives on PyInstaller binaries are common; sign with `signtoo
 <th>Where handled</th>
 </tr>
 <tr>
-<td>🟢 NUL byte prefix on every Open Protocol frame (ScaniaProtocolAdapter)</td>
+<td>🟢 NUL byte prefix on every Open Protocol frame (legacy gateways / test rigs)</td>
 <td><code>app/protocol.py::_recv_oped</code> skips leading <code>\x00</code> bytes before parsing the length field</td>
 </tr>
 <tr>
