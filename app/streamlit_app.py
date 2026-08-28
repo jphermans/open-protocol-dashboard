@@ -45,12 +45,23 @@ import app.protocol as protocol
 
 
 # ---------------------------------------------------------------------------
+# Module-level constants
+# ---------------------------------------------------------------------------
+# Emoji icons used in section headers and labels across the dashboard.
+# Centralised here so a single change updates every appearance (and so
+# missing-reference errors like the NameError we shipped in v1.2.4--v1.2.6
+# become impossible: any icon must be defined in this block).
+WRENCH = '\U0001F527'   # 🔧  - the product icon, used in titles, Setup-tab
+                       #        section headers, and the destructive-action
+                       #        password panel.
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Field tooltips (hover-text on every form input)
-# ---------------------------------------------------------------------------
+# Field tooltips (hover-text on every form input)\# ---------------------------------------------------------------------------
 # Tooltip text is derived from the 'TMC Herstellingen ASML' XLSX schema:
 # executor, status, SAP order, SAP status options, work date, start time,
 # end time. Open Protocol fields (tool serial, controller serial, firmware,

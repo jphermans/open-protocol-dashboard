@@ -1,3 +1,14 @@
+## [1.2.7] - 2026-08-28
+
+### Fixed
+- **App startup crash in Setup tab** - `NameError: name 'WRENCH' is not defined`
+  when opening the Setup tab. The `WRENCH` emoji constant was referenced
+  by `_render_password_section()` (added in v1.2.4) but was never defined.
+  Fixed by adding `WRENCH = '\U0001F527'` (codepoint U+1F527, "\xf0\x9f\x94\xa7"
+  in UTF-8) at module scope in `app/streamlit_app.py`, alongside the
+  other constants. Centralising all emoji icons at module scope means
+  similar `NameError`s can't recur.
+
 ## [1.2.6] - 2026-08-28
 
 ### Fixed
