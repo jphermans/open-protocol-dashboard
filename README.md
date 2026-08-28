@@ -11,7 +11,7 @@
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0%2B-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
 [![Pandas](https://img.shields.io/badge/Pandas-2.0%2B-150458?style=for-the-badge&logo=pandas&logoColor=white)](https://pandas.pydata.org/)
 [![License](https://img.shields.io/badge/License-Internal%20Use-yellow?style=for-the-badge)](#-license)
-[![Version](https://img.shields.io/badge/Version-1.2.3-success?style=for-the-badge)](#-versioning)
+[![Version](https://img.shields.io/badge/Version-1.2.4-success?style=for-the-badge)](#-versioning)
 
 [![Platforms](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](#-cross-platform-launcher)
 [![Platforms](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](#-cross-platform-launcher)

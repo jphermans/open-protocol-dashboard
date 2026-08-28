@@ -62,13 +62,26 @@ def get_password_hash() -> str:
 
     Resolution order:
       1. `OPEN_PROTOCOL_PASSWORD_HASH` env var (operator-supplied override).
-      2. SHA-256 of the built-in `DEFAULT_PASSWORD`.
+      2. `auth_config.json` on disk (saved from the Setup tab by the
+         operator). Missing file falls through to the default so that
+         fresh installs / `--recreate-venv` always come up with
+         `Atlas123!` as expected.
+      3. SHA-256 of the built-in `DEFAULT_PASSWORD`.
     """
     override = os.environ.get("OPEN_PROTOCOL_PASSWORD_HASH", "").strip().lower()
     if override and len(override) == 64 and all(
         c in "0123456789abcdef" for c in override
     ):
         return override
+    try:
+        from app.password_config import load_password_hash as _disk
+        disk = _disk()
+        if disk:
+            return disk
+    except Exception:
+        # A broken config file should never lock the operator out —
+        # fall through to the default password.
+        pass
     return _default_hash()
 
 

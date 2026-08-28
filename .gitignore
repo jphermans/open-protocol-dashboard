@@ -45,3 +45,5 @@ db_config.local.json
 
 # Logs
 *.log
+# Destructive-action password hash (Setup tab; do not commit)
+auth_config.json

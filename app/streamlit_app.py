@@ -994,6 +994,7 @@ def render_setup_tab() -> None:
         st.rerun()
 
     _render_supported_databases_panel(_appcfg)
+    _render_password_section()
 
 
 def _render_supported_databases_panel(_appcfg) -> None:
@@ -1030,6 +1031,161 @@ def _render_supported_databases_panel(_appcfg) -> None:
                 f"- **Notes:** {spec['notes']}"
             )
             st.divider()
+
+
+def _render_destructive_gate(scope_key: str, checkbox_label: str, typed_word: str) -> None:
+    """Shared sidebar-gate UI used by delete / save-db / change-password.
+
+    Renders an inline password box + Authenticate button if the session
+    is not yet unlocked, plus the confirmation checkbox + typed
+    confirmation word fields. Caller checks
+    `auth.is_authenticated(st.session_state)` to decide whether to
+    enable the actual action button.
+    """
+    authed = auth.is_authenticated(st.session_state)
+    if not authed:
+        pw = st.text_input(
+            'Password to unlock destructive actions',
+            type='password',
+            key=f'{scope_key}_inline_pw',
+            placeholder='Enter password',
+            label_visibility='collapsed',
+        )
+        if st.button('Authenticate', key=f'{scope_key}_inline_btn', type='primary'):
+            if auth.authenticate(st.session_state, pw):
+                st.session_state.pop(f'{scope_key}_inline_pw', None)
+                st.rerun()
+            else:
+                st.error('Wrong password.')
+    st.checkbox(checkbox_label, key=f'{scope_key}_confirm_box')
+    st.text_input(
+        f'Type {typed_word} to confirm',
+        key=f'{scope_key}_confirm_text',
+        placeholder=typed_word,
+        help=f'Second confirmation gate. Type the word {typed_word} (case-sensitive) to enable the action button.',
+    )
+
+
+def _render_password_section() -> None:
+    """Password change / reset panel in the Setup tab.
+
+    Behaviour:
+        * **Default password** (`Atlas123!`) is shown when no
+          `auth_config.json` file exists on disk. This is the
+          "When reinstalling then use standard password" path.
+        * **Custom password** is shown when `auth_config.json` is
+          present and contains a non-default hash.
+        * Both the **Change password** and **Reset to standard**
+          buttons are gated by the same destructive-action gate used
+          for delete records / save DB config (sidebar unlock +
+          confirmation checkbox + typed confirmation word).
+    """
+    import app.password_config as pwcfg  # local import keeps top of file tidy
+
+    st.divider()
+    st.subheader(f'{WRENCH} Destructive-action password')
+
+    # Status banner: tell the operator which password is currently active.
+    if pwcfg.is_using_default():
+        st.info(
+            f'Active password: **default** (`{auth.DEFAULT_PASSWORD}`). '
+            'This is what fresh installs / `--recreate-venv` always start with.'
+        )
+    else:
+        st.success(
+            'Active password: **custom** (stored in `auth_config.json`). '
+            'Use Reset below to go back to the default.'
+        )
+    st.caption(
+        'Resolution order: `OPEN_PROTOCOL_PASSWORD_HASH` env var '
+        '→ `auth_config.json` → built-in default. Delete '
+        '`auth_config.json` to reset to default manually.'
+    )
+
+    # Re-use the existing destructive-action gate.
+    _render_destructive_gate(
+        scope_key='pw',
+        checkbox_label='I understand this changes the destructive-action password',
+        typed_word='RESET',
+    )
+
+    pw_authed = auth.is_authenticated(st.session_state)
+    confirm_box = bool(st.session_state.get('pw_confirm_box'))
+    confirm_text = (st.session_state.get('pw_confirm_text') or '').strip()
+    text_ok = confirm_text == 'RESET'
+    pw_gated = pw_authed and confirm_box and text_ok
+
+    # ----------------------- Change password -----------------------
+    with st.expander('Change password', expanded=False):
+        with st.form('pw_change_form', clear_on_submit=False):
+            current_pw = st.text_input(
+                'Current password',
+                type='password',
+                key='pw_current',
+                placeholder='Current destructive-action password',
+                help='Enter the password that is currently active (default or custom).',
+            )
+            new_pw = st.text_input(
+                'New password',
+                type='password',
+                key='pw_new',
+                placeholder='New password (min 8 chars)',
+                help='Pick a new password. Minimum 8 characters.',
+            )
+            confirm_pw = st.text_input(
+                'Confirm new password',
+                type='password',
+                key='pw_confirm',
+                placeholder='Type the new password again',
+                help='Must match the new password field above.',
+            )
+            pw_long_enough = len(new_pw or '') >= 8
+            pw_match = bool(new_pw) and new_pw == confirm_pw
+            form_ready = pw_long_enough and pw_match
+            ready = pw_gated and form_ready
+            label = 'Save new password' if ready else 'Complete all confirmations to save'
+            if st.form_submit_button(label, disabled=not ready, type='primary'):
+                if not auth.verify_password(current_pw or ''):
+                    st.error('Current password is incorrect.')
+                else:
+                    try:
+                        pwcfg.save_password_hash(pwcfg.hash_password(new_pw))
+                    except (ValueError, OSError) as exc:
+                        st.error(f'Could not save: {exc}')
+                    else:
+                        st.session_state.pop('pw_new', None)
+                        st.session_state.pop('pw_confirm', None)
+                        st.success('Password updated. Next destructive action uses the new password.')
+                        st.rerun()
+
+    # ----------------------- Reset to standard -----------------------
+    with st.expander('Reset to standard password (`Atlas123!`)', expanded=False):
+        st.caption(
+            'Removes `auth_config.json` so the built-in default is used again. '
+            'Same behaviour as a fresh install / `--recreate-venv`.'
+        )
+        if not pw_gated:
+            st.button(
+                'Reset to standard password',
+                disabled=True,
+                key='pw_reset_btn',
+                help='Unlock destructive actions in the sidebar first and complete the RESET confirmation.',
+            )
+        else:
+            if st.button(
+                'Reset to standard password',
+                type='primary',
+                key='pw_reset_btn',
+            ):
+                removed = pwcfg.clear_password_hash()
+                if removed:
+                    st.success('`auth_config.json` removed. Default `Atlas123!` is now active.')
+                else:
+                    st.info('Already using the default password — nothing to remove.')
+                # Clear confirm so a follow-up accidental click requires
+                # re-typing RESET.
+                st.session_state.pop('pw_confirm_text', None)
+                st.rerun()
 
 
 # Main

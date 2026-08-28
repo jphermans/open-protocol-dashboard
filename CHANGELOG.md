@@ -1,3 +1,52 @@
+## [1.2.4] - 2026-08-28
+
+### Added
+- **Password change / reset panel in the Setup tab.** Operators can now
+  change the destructive-action password from the UI; the value
+  survives an app restart and a venv rebuild. The change flow
+  re-uses the same sidebar-gate as Delete / Save-database:
+  session-unlock + checkbox + typed confirmation word (`RESET`).
+    * **Change password** expander: enter current password, new
+      password (min 8 chars), and confirmation. The current password
+      is re-verified before the new hash is written.
+    * **Reset to standard password (`Atlas123!`)** expander: deletes
+      `auth_config.json` so a fresh install / `--recreate-venv` /
+      manual `rm auth_config.json` always comes back to the factory
+      default. This is the explicit "When reinstalling then use
+      standard password" path.
+- **New module `app/password_config.py`** owns the on-disk storage:
+  atomic JSON write to `auth_config.json`, validation of the stored
+  hash, and a three-tier resolution helper
+  (`env > file > default`) used by `app.auth.get_password_hash()`.
+- **Shared helper `_render_destructive_gate(scope_key, checkbox_label,
+  typed_word)`** in `streamlit_app.py` so delete / save-db /
+  change-password all paint the same gate UI from one place.
+
+### Changed
+- `app/auth.py::get_password_hash()` now consults
+  `app.password_config` between the env-var override and the
+  built-in default. A missing or malformed `auth_config.json` is
+  treated as "use default" so the dashboard stays bootable; the
+  operator can repair from the Setup tab.
+- `.gitignore`: `auth_config.json` added (gitignored, like
+  `db_config.json`).
+- `__version__` bumped `1.2.3` → `1.2.4` (MINOR per SemVer:
+  backward-compatible feature add; no behaviour change for the
+  default password).
+
+### Notes
+- The custom password is stored as SHA-256 with the existing
+  static salt (`op_dash:`). Same hashing as the env-var override,
+  same strength, same caveats in `app/auth.py`'s docstring.
+- Resetting to standard removes the file entirely — it does not
+  write a copy of the default hash, so the three-tier resolution
+  still lands on the default branch on the next call.
+- The change-password flow is gated by the destructive-action
+  password itself. If the active password is forgotten, the
+  fallback is `rm auth_config.json` (or `--recreate-venv`) which
+  brings `Atlas123!` back — by design.
+
+
 ## [1.2.3] - 2026-08-28
 
 ### Fixed
