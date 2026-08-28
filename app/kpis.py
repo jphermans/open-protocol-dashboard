@@ -82,9 +82,12 @@ def trend_by_week(weeks: int = 12) -> list[dict]:
             select(MaintenanceLog.work_date,
                    func.count(MaintenanceLog.id))
             .where(MaintenanceLog.work_date.isnot(None))
+            .group_by(MaintenanceLog.work_date)
         ).all()
-    by_week = Counter()
+    by_week: Counter = Counter()
     for d, c in rows:
+        if d is None:                       # defensive — guards against NULL rows
+            continue
         iso = d.isocalendar()
         by_week[(iso.year, iso.week)] += c
     # Last N ISO weeks, backfilled.
@@ -104,14 +107,17 @@ def trend_by_week(weeks: int = 12) -> list[dict]:
 
 def trend_by_month(months: int = 12) -> list[dict]:
     """Monthly totals for the last `months` calendar months."""
-    by_month = Counter()
+    by_month: Counter = Counter()
     with session_scope() as s:
         rows = s.execute(
             select(MaintenanceLog.work_date,
                    func.count(MaintenanceLog.id))
             .where(MaintenanceLog.work_date.isnot(None))
+            .group_by(MaintenanceLog.work_date)
         ).all()
     for d, c in rows:
+        if d is None:                       # defensive — guards against NULL rows
+            continue
         by_month[(d.year, d.month)] += c
     today = date.today()
     cursor = today.replace(day=1)

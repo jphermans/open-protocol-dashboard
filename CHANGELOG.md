@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
 
+## [1.0.1] - 2026-08-28
+
+### Fixed
+- `app/kpis.py` `trend_by_week` and `trend_by_month` crashed with
+  `AttributeError: 'NoneType' object has no attribute 'isocalendar'` on
+  SQLite when at least one row had a NULL `work_date`. Root cause: the
+  SELECT listed `work_date` alongside `COUNT(id)` without a `GROUP BY`
+  clause, so SQLite returned one aggregated row with `work_date=NULL`.
+  Fix: added `.group_by(MaintenanceLog.work_date)` to both queries, plus
+  a defensive `if d is None: continue` guard in the iteration loops so
+  any future NULL slipping through the filter is skipped silently instead
+  of crashing the dashboard. (Reported by the user running v1.0.0 on
+  macOS with Python 3.14.)
+
+
 ## [1.0.0] - 2026-08-28
 
 ### Added
