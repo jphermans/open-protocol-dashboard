@@ -1,23 +1,17 @@
-# Changelog
-
-All notable changes to this project are documented here.
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-versioning follows [Semantic Versioning](https://semver.org/).
-
-
-## [1.0.1] - 2026-08-28
+## [1.0.2] - 2026-08-28
 
 ### Fixed
-- `app/kpis.py` `trend_by_week` and `trend_by_month` crashed with
-  `AttributeError: 'NoneType' object has no attribute 'isocalendar'` on
-  SQLite when at least one row had a NULL `work_date`. Root cause: the
-  SELECT listed `work_date` alongside `COUNT(id)` without a `GROUP BY`
-  clause, so SQLite returned one aggregated row with `work_date=NULL`.
-  Fix: added `.group_by(MaintenanceLog.work_date)` to both queries, plus
-  a defensive `if d is None: continue` guard in the iteration loops so
-  any future NULL slipping through the filter is skipped silently instead
-  of crashing the dashboard. (Reported by the user running v1.0.0 on
-  macOS with Python 3.14.)
+- `app/streamlit_app.py` `render_kpis_tab` crashed with
+  `KeyError: "None of ['executor'] are in the columns"` (and the same
+  pattern for `day`, `month`, `tool_serial`, `status`) on a fresh empty
+  database. Root cause: `pd.DataFrame([])` returns a zero-column frame,
+  so `.set_index('foo')` raises KeyError when the underlying kpis list
+  is empty. Fix: introduced a small helper `_safe_df(rows, index_col)`
+  that builds an empty frame with the requested index column when the
+  list is empty, and used it at all five call sites in the KPI tab so
+  the dashboard renders clean empty axes instead of crashing.
+  (Reported by the user on macOS with Python 3.14 against a freshly
+  cloned repo.)
 
 
 ## [1.0.0] - 2026-08-28

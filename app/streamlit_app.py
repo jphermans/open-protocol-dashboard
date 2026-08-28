@@ -36,6 +36,24 @@ import app.protocol as protocol
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _safe_df(rows: list[dict], index_col: str) -> pd.DataFrame:
+    """Build a DataFrame keyed on `index_col`, even when `rows` is empty.
+
+    `pd.DataFrame([])` returns a DataFrame with no columns, so calling
+    `.set_index('foo')` on it raises KeyError. This helper guarantees the
+    requested index column exists (with the right dtype) even on an empty
+    list, so the chart / dataframe renders a clean empty axis instead of
+    crashing the dashboard.
+    """
+    if not rows:
+        # Build a zero-row frame with just the index column so set_index works.
+        return pd.DataFrame({index_col: pd.Series([], dtype='object')}).set_index(index_col)
+    return pd.DataFrame(rows).set_index(index_col)
+
+
+# ---------------------------------------------------------------------------
 # Page setup + DB
 # ---------------------------------------------------------------------------
 st.set_page_config(
@@ -403,11 +421,11 @@ def render_kpis_tab() -> None:
     a, b = st.columns(2)
     with a:
         st.markdown('##### Daily activity (last 30 days)')
-        daily = pd.DataFrame(snap['daily']).set_index('day')
+        daily = _safe_df(snap['daily'], 'day')
         st.line_chart(daily, height=240)
     with b:
         st.markdown('##### Monthly activity (last 12 months)')
-        monthly = pd.DataFrame(snap['monthly']).set_index('month')
+        monthly = _safe_df(snap['monthly'], 'month')
         st.bar_chart(monthly, height=240)
 
     st.divider()
@@ -415,16 +433,16 @@ def render_kpis_tab() -> None:
     d, e = st.columns(2)
     with d:
         st.markdown('##### Top executors')
-        df_exec = pd.DataFrame(snap['top_executors']).set_index('executor')
+        df_exec = _safe_df(snap['top_executors'], 'executor')
         st.dataframe(df_exec, width="stretch")
     with e:
         st.markdown('##### Top tools')
-        df_tool = pd.DataFrame(snap['top_tools']).set_index('tool_serial')
+        df_tool = _safe_df(snap['top_tools'], 'tool_serial')
         st.dataframe(df_tool, width="stretch")
 
     st.divider()
     st.markdown('##### Status distribution')
-    df_st = pd.DataFrame(snap['status_dist']).set_index('status')
+    df_st = _safe_df(snap['status_dist'], 'status')
     st.bar_chart(df_st, height=200)
 
     alerts = snap['calibration_alerts']
