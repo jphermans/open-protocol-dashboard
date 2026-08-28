@@ -16,6 +16,7 @@ Layout:
 from __future__ import annotations
 
 import socket
+import time
 from datetime import date, datetime
 
 import pandas as pd
@@ -30,6 +31,7 @@ from app import (
     is_sqlite,
     version_string,
 )
+import app.auth as auth
 import app.crud as crud
 import app.kpis as kpis
 import app.protocol as protocol
@@ -222,11 +224,53 @@ def render_sidebar() -> None:
         if snap['last_seen_at']:
             st.caption(f'Last entry: {snap["last_seen_at"]}')
 
+        _render_auth_widget()
+
         st.divider()
         st.markdown('### Refresh')
         if st.button('Reload KPIs', width="stretch"):
             st.cache_data.clear()
             st.rerun()
+
+
+def _render_auth_widget() -> None:
+    """Sidebar widget that unlocks destructive actions for the session.
+
+    When the user is authenticated, a countdown shows how long the unlock
+    lasts (default 10 minutes), and a 'Lock now' button is available.
+    When locked, a password field + 'Authenticate' button appear; the
+    password is verified against the active hash (default: 'Atlas123!',
+    override via OPEN_PROTOCOL_PASSWORD_HASH env var).
+    """
+    st.divider()
+    st.markdown('### 🔒 Destructive actions')
+    if auth.is_authenticated(st.session_state):
+        remaining = auth.remaining_seconds(st.session_state)
+        mins = int(remaining // 60)
+        secs = int(remaining % 60)
+        st.success(f'Unlocked · {mins}m {secs:02d}s remaining')
+        c1, c2 = st.columns(2)
+        if c1.button('Re-check', width='stretch'):
+            # Re-extends the TTL by AUTH_TTL_SECONDS.
+            st.session_state['auth_expires_at'] = time.time() + auth.AUTH_TTL_SECONDS
+            st.rerun()
+        if c2.button('Lock now', width='stretch'):
+            auth.clear_auth(st.session_state)
+            st.rerun()
+    else:
+        pw = st.text_input(
+            'Password',
+            type='password',
+            placeholder='Enter password to unlock',
+            key='sidebar_auth_pw',
+            label_visibility='collapsed',
+        )
+        if st.button('Authenticate', type='primary', width='stretch'):
+            if auth.authenticate(st.session_state, pw):
+                st.session_state.pop('sidebar_auth_pw', None)
+                st.rerun()
+            else:
+                st.error('Wrong password.')
 
 
 # ---------------------------------------------------------------------------
@@ -631,10 +675,43 @@ def _render_delete_form() -> None:
                    for r in rows}
     targets = st.multiselect('Rows to delete', options=list(id_to_label),
                              format_func=lambda i: id_to_label[i])
-    confirm = st.checkbox('I am sure — delete these rows permanently')
-    if st.button('Delete selected', disabled=not (targets and confirm)):
+    confirm_box = st.checkbox(
+        'I am sure — delete these rows permanently',
+        key='delete_confirm_box',
+    )
+    confirmation_text = st.text_input(
+        'Type DELETE to confirm',
+        key='delete_confirm_text',
+        placeholder='DELETE',
+        help='This is a second confirmation gate. Type the word DELETE (case-sensitive) to enable the button.',
+    )
+    text_ok = (confirmation_text or '').strip() == 'DELETE'
+
+    authed = auth.is_authenticated(st.session_state)
+    if not authed:
+        st.warning('🔒 Destructive actions are locked. Enter the password below to unlock delete for this session.')
+        pw = st.text_input(
+            'Password',
+            type='password',
+            key='delete_auth_pw',
+            placeholder='Password to unlock delete',
+            label_visibility='collapsed',
+        )
+        if st.button('Authenticate', key='delete_auth_btn', type='primary', width='stretch'):
+            if auth.authenticate(st.session_state, pw):
+                st.session_state.pop('delete_auth_pw', None)
+                st.rerun()
+            else:
+                st.error('Wrong password.')
+
+    ready = bool(targets) and confirm_box and text_ok and authed
+    label = 'Delete selected' if ready else 'Complete all confirmations to delete'
+    if st.button(label, disabled=not ready, type='primary', width='stretch'):
         for tid in targets:
             crud.delete_log(tid)
+        # Clear the confirm text so a follow-up accidental click requires
+        # re-typing DELETE.
+        st.session_state.pop('delete_confirm_text', None)
         st.success(f'Deleted {len(targets)} row(s).')
         st.rerun()
 
@@ -836,9 +913,7 @@ def render_setup_tab() -> None:
                 'database': database,
             }
 
-        c1, c2 = st.columns(2)
-        test_btn = c1.form_submit_button('Test connection')
-        save_btn = c2.form_submit_button('Save', type='primary')
+        test_btn = st.form_submit_button('Test connection')
 
     if test_btn:
         ok, msg = _appcfg.test_connection(payload)
@@ -847,7 +922,46 @@ def render_setup_tab() -> None:
         else:
             st.error(msg)
 
-    if save_btn:
+    # ----- Auth + confirmation gate for Save (outside the form so the
+    # Save button can be conditionally enabled/disabled) -----
+    st.divider()
+    st.markdown('#### Confirm and save')
+
+    authed = auth.is_authenticated(st.session_state)
+    if not authed:
+        st.warning(
+            '🔒 Destructive actions are locked. Enter the password below to '
+            'unlock Save for this session.'
+        )
+        pw = st.text_input(
+            'Password',
+            type='password',
+            key='setup_auth_pw',
+            placeholder='Password to unlock Save',
+            label_visibility='collapsed',
+        )
+        if st.button('Authenticate', key='setup_auth_btn', type='primary', width='stretch'):
+            if auth.authenticate(st.session_state, pw):
+                st.session_state.pop('setup_auth_pw', None)
+                st.rerun()
+            else:
+                st.error('Wrong password.')
+
+    confirm_box = st.checkbox(
+        'I understand this changes the active database',
+        key='setup_confirm_box',
+    )
+    confirmation_text = st.text_input(
+        'Type CHANGE to confirm',
+        key='setup_confirm_text',
+        placeholder='CHANGE',
+        help='Second confirmation gate. Type the word CHANGE (case-sensitive) to enable the Save button.',
+    )
+    text_ok = (confirmation_text or '').strip() == 'CHANGE'
+
+    ready = confirm_box and text_ok and authed
+    label = 'Save and switch database' if ready else 'Complete all confirmations to save'
+    if st.button(label, disabled=not ready, type='primary', width='stretch'):
         try:
             url_preview = _appcfg.build_database_url(payload)
         except ValueError as exc:
@@ -863,6 +977,9 @@ def render_setup_tab() -> None:
             init_db()
         except Exception as exc:
             st.warning(f'Saved, but init_db() failed on the new DB: {exc}')
+        # Clear the confirm text so a follow-up accidental click requires
+        # re-typing CHANGE.
+        st.session_state.pop('setup_confirm_text', None)
         st.success(f'Saved. Now using {_appcfg.redact_password(url_preview)}.')
         st.rerun()
 

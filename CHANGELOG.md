@@ -1,3 +1,63 @@
+## [1.2.0] - 2026-08-28
+
+### Added
+- **Password + confirmation gate for destructive actions.** Two actions
+  in the dashboard now require authentication before they can fire:
+    * Deleting one or more maintenance-log records.
+    * Switching the database backend (Local SQLite ↔ Remote,
+      host/port/login/password/db name).
+  Both gates require **all three** of:
+    * Session-wide unlock (via the new sidebar "🔒 Destructive
+      actions" widget) **or** inline password entry inside the form.
+    * A confirmation checkbox ("I am sure — delete these rows
+      permanently" / "I understand this changes the active database").
+    * A typed confirmation word — **DELETE** for delete, **CHANGE**
+      for save — entered into a separate text field (case-sensitive,
+      cleared after each successful action to prevent accidental
+      repeat-clicks).
+- **New module `app/auth.py`** providing:
+    * `DEFAULT_PASSWORD = "Atlas123!"` (per spec).
+    * `verify_password(pw)` — constant-time SHA-256 check against the
+      active hash (default = hash of `Atlas123!`).
+    * `authenticate(session_state, pw)` — grants a session-wide unlock
+      that lasts `AUTH_TTL_SECONDS = 600` (10 minutes). The unlock is
+      re-extendable from the sidebar via the **Re-check** button.
+    * `clear_auth()` — wipes the unlock immediately (used by the
+      sidebar **Lock now** button and on TTL expiry).
+    * `is_authenticated()` / `remaining_seconds()` — read-side helpers.
+  Operator-supplied override via the `OPEN_PROTOCOL_PASSWORD_HASH` env
+  var (SHA-256 hex of the salted password); generation recipe is
+  documented in the module docstring.
+- **Sidebar "🔒 Destructive actions" widget** with two states:
+    * **Locked** — password field + Authenticate button.
+    * **Unlocked** — countdown ("Unlocked · Xm YYs remaining"),
+      **Re-check** (extend TTL) and **Lock now** buttons.
+- Inline password fields + Authenticate buttons inside the Delete
+  sub-tab and the Setup save panel, so a one-off destructive action
+  can be performed even without using the sidebar widget first.
+
+### Security notes
+- Passwords are hashed (SHA-256 + static salt) before comparison.
+  Plaintext passwords live only in the Streamlit text-input widget
+  for the duration of one form submission and are never written to
+  disk, never logged, never echoed back in the UI.
+- The session unlock TTL is 10 minutes by default — adjust via
+  `AUTH_TTL_SECONDS` in `app/auth.py`.
+- `Atlas123!` is a placeholder. Operators are strongly encouraged to
+  override it with a stronger password before deploying to a
+  multi-user environment. The override mechanism is the
+  `OPEN_PROTOCOL_PASSWORD_HASH` env var; a UI control for changing
+  the password at runtime is a candidate for a future MINOR-bump
+  release.
+
+### Notes
+- MINOR bump per SemVer (1.1.3 → 1.2.0): new feature (auth
+  subsystem) added without breaking existing functionality. Delete
+  and Save both still work exactly as before for users who already
+  know the password — the gate is additive, not a behaviour change
+  for trusted single-user setups.
+
+
 ## [1.1.3] - 2026-08-28
 
 ### Added
