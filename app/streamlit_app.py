@@ -91,6 +91,11 @@ _HELP: dict[str, str] = {
         "Atlas Copco / Power-Focus / Power-TEC tool serial number "
         "(e.g. 'A4411212'). Auto-filled when this row was created by an "
         "Open Protocol pull (MID 0040); leave blank for manual-only entries.",
+    'tool_type':
+        "Tool model / type identifier (e.g. ETX, Tensor, QST). Auto-populated "
+        "from Open Protocol MID 0040 (bytes 36-56, revision-dependent). Required "
+        "for creating a maintenance record; click Fetch from controller below "
+        "to populate automatically.",
     'controller_serial':
         "Atlas Copco controller serial this tool is paired with (e.g. 'ES512'). "
         "Auto-filled from Open Protocol pull when available; blank otherwise.",
@@ -197,6 +202,64 @@ def _safe_df(rows: list[dict], index_col: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Page setup + DB
 # ---------------------------------------------------------------------------
+
+# Required fields for the Create form. tool_type is included because
+# every real maintenance entry is tied to a specific tool model and
+# the Open Protocol pull can populate it automatically.
+_REQUIRED_CREATE = ("tool_serial", "tool_type", "work_date", "executor")
+_REQUIRED_LABELS = {
+    "tool_serial": "Tool serial",
+    "tool_type":   "Tool type",
+    "work_date":   "Work date",
+    "executor":    "Executor",
+}
+
+
+def _missing_required(payload, required=None):
+    """Return list of required field names whose value is empty/None/blank."""
+    if required is None:
+        required = _REQUIRED_CREATE
+    missing = []
+    for k in required:
+        v = payload.get(k)
+        if v is None:
+            missing.append(k)
+            continue
+        if isinstance(v, str) and not v.strip():
+            missing.append(k)
+    return missing
+
+
+def _fetch_via_op(st_session_state):
+    """Fetch tool data from the controller and populate session_state."""
+    host = (st_session_state.get("op_host") or "").strip() or "10.0.0.1"
+    port_raw = st_session_state.get("op_port") or 4545
+    try:
+        port = int(port_raw)
+    except (TypeError, ValueError):
+        port = 4545
+    try:
+        from app.protocol import fetch_tool_data
+        parsed = fetch_tool_data(host, port)
+        st_session_state["op_tool_serial"]       = parsed.get("tool_serial", "")
+        st_session_state["op_tool_type"]         = parsed.get("tool_type", "")
+        st_session_state["op_controller_serial"] = parsed.get("controller_serial", "")
+        st_session_state["op_firmware"]          = parsed.get("firmware", "")
+        st_session_state["op_total_tightenings"] = int(parsed.get("total_tightenings") or 0)
+        st_session_state["op_raw_response"]      = parsed.get("raw_response", "")
+        st_session_state.pop("op_last_error", None)
+        st.success(
+            "Fetched from " + str(host) + ":" + str(port) +
+            " - tool_type=" + repr(parsed.get("tool_type", ""))
+        )
+    except Exception as exc:
+        st_session_state["op_last_error"] = (
+            "Could not fetch from " + str(host) + ":" + str(port) +
+            " - " + exc.__class__.__name__ + ": " + str(exc)
+        )
+        st.error(st_session_state["op_last_error"])
+
+
 st.set_page_config(
     page_title=f'Tool CRUD Dashboard v{__version__}',
         page_icon='🔧',
@@ -563,63 +626,195 @@ def _render_browse_tab() -> None:
 
 
 def _render_create_form() -> None:
-    with st.form('create_form', clear_on_submit=True):
-        st.subheader('New maintenance entry')
+    """New maintenance entry.
+
+    Required fields: tool_serial, tool_type, work_date, executor.
+    The Create button stays disabled until all four are filled.
+    A 'Fetch from controller' button uses Open Protocol MID 0040 to
+    auto-populate tool_serial + tool_type + controller_serial +
+    firmware + total_tightenings from the live controller.
+
+    Server-side: app.crud.create_log() re-checks the same required
+    fields and returns 'MISSING' if any are blank, so callers that
+    bypass the UI cannot save empties either.
+    """
+    # --- Controller connection fields (used by Fetch button) ------------
+    with st.expander("Controller connection (used by Fetch)", expanded=False):
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            st.text_input(
+                "Controller host / IP",
+                key="op_host",
+                value=st.session_state.get("op_host", "10.0.0.1"),
+                placeholder="10.0.0.1",
+                help=_HELP.get("setup_host",
+                                "IP / hostname of the Atlas Copco controller."),
+            )
+        with cc2:
+            st.number_input(
+                "Controller port",
+                key="op_port",
+                min_value=1, max_value=65535,
+                value=int(st.session_state.get("op_port", 4545) or 4545),
+                step=1,
+                help="Open Protocol TCP port (default 4545).",
+            )
+        if st.button("Fetch from controller (MID 0040)", type="secondary"):
+            _fetch_via_op(st.session_state)
+
+    # --- Required-field hint banner -------------------------------------
+    st.info(
+        "Required: " + ", ".join(_REQUIRED_LABELS[k] for k in _REQUIRED_CREATE) +
+        ". Click 'Fetch from controller' above to auto-fill tool "
+        "serial, tool type, controller serial and firmware via "
+        "Open Protocol MID 0040."
+    )
+
+    with st.form("create_form", clear_on_submit=False):
+        st.subheader("New maintenance entry")
+
         c1, c2, c3 = st.columns(3)
         with c1:
-            executor = st.text_input('Executor', placeholder='First Last', help=_HELP['executor'])
-            sap_order = st.text_input('SAP order', placeholder='0000000000', help=_HELP['sap_order'])
-            sap_status_options = st.text_input('SAP status options', placeholder='optional', help=_HELP['sap_status_options'])
+            executor = st.text_input(
+                "Executor *", placeholder="First Last",
+                help=_HELP["executor"],
+            )
+            sap_order = st.text_input(
+                "SAP order", placeholder="0000000000",
+                help=_HELP["sap_order"],
+            )
+            sap_status_options = st.text_input(
+                "SAP status options", placeholder="optional",
+                help=_HELP["sap_status_options"],
+            )
         with c2:
-            status_options = ['Finished', 'In progress', 'Cancelled', 'Waiting for parts']
-            status = st.selectbox('Status', status_options, index=0, help=_HELP['status'])
-            work_date = st.date_input('Date', value=date.today(), help=_HELP['work_date'])
+            status_options = [
+                "Finished", "In progress", "Cancelled", "Waiting for parts",
+            ]
+            status = st.selectbox(
+                "Status", status_options, index=0, help=_HELP["status"],
+            )
+            work_date = st.date_input(
+                "Work date (dd/mm/yyyy) *",
+                value=date.today(),
+                help=_HELP["work_date"],
+            )
         with c3:
-            start_time = st.text_input('Start time', placeholder='HH:MM', help=_HELP['start_time'])
-            end_time   = st.text_input('End time',   placeholder='HH:MM', help=_HELP['end_time'])
+            start_time = st.text_input(
+                "Start time", placeholder="HH:MM",
+                help=_HELP["start_time"],
+            )
+            end_time = st.text_input(
+                "End time", placeholder="HH:MM",
+                help=_HELP["end_time"],
+            )
 
-        st.markdown('**Optional Open Protocol fields**')
+        st.markdown("**Tool identity (required) **")
+        t1, t2, t3 = st.columns(3)
+        with t1:
+            tool_serial = st.text_input(
+                "Tool serial *",
+                value=st.session_state.get("op_tool_serial") or "",
+                placeholder="A4411212",
+                help=_HELP["tool_serial"],
+            )
+        with t2:
+            tool_type = st.text_input(
+                "Tool type *",
+                value=st.session_state.get("op_tool_type") or "",
+                placeholder="ETX / Tensor / QST",
+                help=_HELP["tool_type"],
+            )
+        with t3:
+            controller_serial = st.text_input(
+                "Controller serial",
+                value=st.session_state.get("op_controller_serial") or "",
+                placeholder="optional",
+                help=_HELP["controller_serial"],
+            )
+
+        st.markdown("**Optional Open Protocol fields**")
         d1, d2, d3, d4 = st.columns(4)
         with d1:
-            tool_serial = st.text_input('Tool serial', help=_HELP['tool_serial'])
-            controller_serial = st.text_input('Controller serial', help=_HELP['controller_serial'])
+            firmware = st.text_input(
+                "Firmware",
+                value=st.session_state.get("op_firmware") or "",
+                help=_HELP["firmware"],
+            )
+            protocol_version = st.text_input(
+                "Protocol version", help=_HELP["protocol_version"],
+            )
         with d2:
-            firmware = st.text_input('Firmware', help=_HELP['firmware'])
-            protocol_version = st.text_input('Protocol version', help=_HELP['protocol_version'])
+            total_tightenings = st.number_input(
+                "Total tightenings",
+                min_value=0, step=1,
+                value=int(st.session_state.get("op_total_tightenings") or 0),
+                help=_HELP["total_tightenings"],
+            )
+            tightenings_since_svc = st.number_input(
+                "Since service", min_value=0, step=1, value=0,
+                help=_HELP["tightenings_since_svc"],
+            )
         with d3:
-            total_tightenings = st.number_input('Total tightenings', min_value=0, step=1, value=0, help=_HELP['total_tightenings'])
-            tightenings_since_svc = st.number_input('Since service', min_value=0, step=1, value=0, help=_HELP['tightenings_since_svc'])
+            tightening_id = st.text_input(
+                "Tightening ID", help=_HELP["tightening_id"],
+            )
+            tightening_status = st.selectbox(
+                "Tightening status",
+                ["", "OK", "NOK", "Aborted"], index=0,
+                help=_HELP["tightening_status"],
+            )
         with d4:
-            tightening_id = st.text_input('Tightening ID', help=_HELP['tightening_id'])
-            tightening_status = st.selectbox('Tightening status', ['', 'OK', 'NOK', 'Aborted'], index=0, help=_HELP['tightening_status'])
+            cell_id = st.text_input("Cell ID", placeholder="optional")
+            job_number = st.text_input("Job number", placeholder="optional")
 
-        notes = st.text_area('Notes', help=_HELP['notes'])
+        notes = st.text_area("Notes", help=_HELP["notes"])
 
-        if st.form_submit_button('Create'):
-            payload = {
-                'executor'             : executor,
-                'status'               : status,
-                'sap_order'            : sap_order,
-                'sap_status_options'   : sap_status_options,
-                'work_date'            : work_date,
-                'start_time'           : start_time,
-                'end_time'             : end_time,
-                'tool_serial'          : tool_serial,
-                'controller_serial'    : controller_serial,
-                'firmware'             : firmware,
-                'protocol_version'     : protocol_version,
-                'total_tightenings'    : total_tightenings,
-                'tightenings_since_svc': tightenings_since_svc,
-                'tightening_id'        : tightening_id,
-                'tightening_status'    : tightening_status,
-                'notes'                : notes,
-                'source'               : 'manual',
-            }
+        payload = {
+            "executor"             : executor,
+            "status"               : status,
+            "sap_order"            : sap_order,
+            "sap_status_options"   : sap_status_options,
+            "work_date"            : work_date,
+            "start_time"           : start_time,
+            "end_time"             : end_time,
+            "tool_serial"          : tool_serial,
+            "tool_type"            : tool_type,
+            "controller_serial"    : controller_serial,
+            "firmware"             : firmware,
+            "protocol_version"     : protocol_version,
+            "total_tightenings"    : total_tightenings,
+            "tightenings_since_svc": tightenings_since_svc,
+            "tightening_id"        : tightening_id,
+            "tightening_status"    : tightening_status,
+            "cell_id"              : cell_id,
+            "job_number"           : job_number,
+            "notes"                : notes,
+            "source"               : "manual",
+        }
+        missing = _missing_required(payload)
+        ready = not missing
+        label = "Create record" if ready else (
+            "Fill required: " + ", ".join(_REQUIRED_LABELS[m] for m in missing)
+        )
+        if st.form_submit_button(label, disabled=not ready, type="primary"):
             saved, status_flag = crud.create_log(payload)
-            if status_flag == 'CREATED':
-                st.success(f"Created record #{saved.get('id')}")
+            if status_flag == "CREATED":
+                st.success("Created record #" + str(saved.get("id")))
+                for k in (
+                    "op_tool_serial", "op_tool_type",
+                    "op_controller_serial", "op_firmware",
+                    "op_total_tightenings", "op_raw_response",
+                ):
+                    st.session_state.pop(k, None)
+                st.rerun()
+            elif status_flag == "MISSING":
+                st.error(
+                    "Server-side validation failed - missing: "
+                    + ", ".join(saved.get("missing", []))
+                )
             else:
-                st.warning('Duplicate — that natural key already exists.')
+                st.warning("Duplicate - that natural key already exists.")
 
 
 def _render_update_form() -> None:

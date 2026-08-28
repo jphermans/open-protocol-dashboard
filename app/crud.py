@@ -189,6 +189,17 @@ def create_log(data: dict) -> tuple[dict, str]:
     Returns (display_dict, status) where status is 'CREATED' or 'DUPLICATE'.
     On duplicate, the existing row is returned unchanged.
     """
+    # Reject blank records at the server side too, so any caller
+    # that bypasses the Streamlit UI gate cannot insert empties.
+    _required = ("tool_serial", "tool_type", "work_date", "executor")
+    _missing = [
+        k for k in _required
+        if data.get(k) is None
+        or (isinstance(data.get(k), str) and not data.get(k).strip())
+    ]
+    if _missing:
+        return ({"missing": _missing}, "MISSING")
+
     with session_scope() as s:
         # Try PostgreSQL ON CONFLICT first (atomic), then fall back.
         try:

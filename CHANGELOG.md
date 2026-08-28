@@ -1,3 +1,55 @@
+## [1.2.5] - 2026-08-28
+
+### Added
+- **`tool_type` column in the `maintenance_log` table** (VARCHAR(32),
+  nullable). Atlas Copco tool model / type identifier (e.g. `ETX`,
+  `Tensor`, `QST`). Auto-populated from Open Protocol MID 0040
+  (bytes 36-56, revision-dependent).
+- **Live "Fetch from controller (MID 0040)" button** in the Create
+  form. Operators enter the controller host + port and click
+  Fetch; the dashboard calls `app.protocol.fetch_tool_data()` over
+  TCP, parses the response, and pre-fills:
+    * Tool serial *
+    * Tool type *
+    * Controller serial
+    * Firmware
+    * Total tightenings
+  The fields default to whatever the controller returned but remain
+  fully editable.
+- **`_REQUIRED_CREATE` tuple + `_missing_required()` helper** at the
+  top of `app/streamlit_app.py`. The Create button stays disabled
+  until all four required fields are filled; the label flips from
+  `Create record` to `Fill required: Tool serial, Tool type, ...`
+  so the operator knows exactly what is missing.
+- **`_fetch_via_op()` helper** in `app/streamlit_app.py` - the
+  session-state-aware wrapper that runs the Open Protocol fetch
+  and caches the parsed values for the next form render.
+- **`tool_type` tooltip** in the centralised `_HELP` dict, sourced
+  from the same XLSX + Open Protocol context as the other entries.
+
+### Fixed
+- **"I still can create an empty record"** - the previous Create
+  form had no required-field guard. Now `tool_serial`, `tool_type`,
+  `work_date` and `executor` are mandatory at both the UI layer (the
+  Create button is `disabled` and the label shows the missing field
+  names) and the server layer (`crud.create_log()` returns
+  `('MISSING', missing=[...])` if any required field is blank, so a
+  caller that bypasses the UI gate still cannot save an empty row).
+
+### Changed
+- **`parse_mid_0040()`** now extracts `tool_type` from raw bytes
+  36-56 (20 ASCII chars). Tolerant of revisions where the field is
+  absent: returns `'—'` rather than raising.
+- **`MaintenanceLog.as_display_dict()`** includes `tool_type`.
+
+### Notes
+- **In-place schema migration**: `_ensure_tool_type_column()` runs
+  once at startup, inspecting `maintenance_log` for an existing
+  `tool_type` column and issuing an `ALTER TABLE ... ADD COLUMN`
+  statement only when missing. Idempotent for SQLite, PostgreSQL,
+  MySQL/MariaDB, and MSSQL. Existing databases created on v1.2.4
+  gain the column automatically on first launch of v1.2.5.
+
 ## [1.2.4] - 2026-08-28
 
 ### Added

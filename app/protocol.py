@@ -168,6 +168,7 @@ def parse_mid_0040(raw: str) -> Optional[dict]:
         return None
     return {
         'tool_serial'           : _s(raw, 22, 36),
+        'tool_type'             : _s(raw, 36, 56),
         'total_tightenings'     : _n(raw, 38, 48),
         'last_calibration_date' : _s(raw, 50, 60),
         'controller_serial'     : _s(raw, 71, 81),

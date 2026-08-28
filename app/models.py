@@ -55,6 +55,7 @@ class MaintenanceLog(Base):
 
     # ---- Open Protocol MID 0040 ----------------------------------------
     tool_serial             = Column(String(32),  nullable=True)
+    tool_type               = Column(String(32),  nullable=True)
     controller_serial       = Column(String(32),  nullable=True)
     total_tightenings       = Column(Integer,     nullable=True)
     tightenings_since_svc   = Column(Integer,     nullable=True)
@@ -117,6 +118,7 @@ class MaintenanceLog(Base):
             'start_time'            : self.start_time or '',
             'end_time'              : self.end_time or '',
             'tool_serial'           : self.tool_serial or '',
+            'tool_type'             : self.tool_type or '',
             'controller_serial'     : self.controller_serial or '',
             'firmware'              : self.firmware or '',
             'total_tightenings'     : self.total_tightenings if self.total_tightenings is not None else 0,

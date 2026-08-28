@@ -85,3 +85,45 @@ def session_scope() -> Iterator[Session]:
         raise
     finally:
         session.close()
+
+
+# ---------------------------------------------------------------------------
+# v1.2.5 schema migration: ADD COLUMN tool_type
+# ---------------------------------------------------------------------------
+def _ensure_tool_type_column(engine) -> None:
+    """Add the tool_type column to maintenance_log if it does not exist.
+
+    Called once at startup so existing SQLite / Postgres / MySQL / MSSQL
+    databases created before v1.2.5 gain the column without manual SQL.
+    Idempotent: a second call sees the column already present and is a no-op.
+    """
+    from sqlalchemy import inspect, text
+    insp = inspect(engine)
+    if not insp.has_table("maintenance_log"):
+        return
+    cols = {c["name"] for c in insp.get_columns("maintenance_log")}
+    if "tool_type" in cols:
+        return
+    dialect = engine.dialect.name
+    with engine.begin() as conn:
+        if dialect == "sqlite":
+            conn.execute(text("ALTER TABLE maintenance_log ADD COLUMN tool_type VARCHAR(32)"))
+        elif dialect == "postgresql":
+            conn.execute(text("ALTER TABLE maintenance_log ADD COLUMN tool_type VARCHAR(32)"))
+        elif dialect in ("mysql", "mariadb"):
+            conn.execute(text("ALTER TABLE maintenance_log ADD COLUMN tool_type VARCHAR(32)"))
+        elif dialect == "mssql":
+            conn.execute(text("ALTER TABLE maintenance_log ADD tool_type NVARCHAR(32) NULL"))
+        else:
+            conn.execute(text("ALTER TABLE maintenance_log ADD COLUMN tool_type VARCHAR(32)"))
+
+
+def init_db() -> None:
+    """Create the maintenance_log table if it doesn't exist, then run
+    lightweight in-place migrations (currently: tool_type column)."""
+    from app.models import Base
+    from app.paths import get_engine
+
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+    _ensure_tool_type_column(engine)
