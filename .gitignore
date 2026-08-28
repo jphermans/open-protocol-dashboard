@@ -30,6 +30,12 @@ database.sqlite-shm
 *.local
 
 
+# DB config saved by the Setup tab (contains plaintext credentials)
+db_config.json
+db_config.local.json
+*.local.json
+
+
 # IDE
 .idea/
 .vscode/

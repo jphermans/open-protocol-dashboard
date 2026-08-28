@@ -47,8 +47,29 @@ def _default_sqlite_url() -> str:
 
 
 def get_database_url() -> str:
-    """Return the active DATABASE_URL (env var wins, else default SQLite)."""
-    return os.environ.get("DATABASE_URL", _default_sqlite_url())
+    """Resolve the active DATABASE_URL by precedence:
+
+    1. ``DATABASE_URL`` environment variable (highest priority — keeps
+       the existing ``.env`` / ``run.py --db ...`` behaviour).
+    2. ``db_config.json`` on disk (saved by the Setup tab in the UI).
+    3. Default SQLite file in the project folder.
+    """
+    env = os.environ.get("DATABASE_URL")
+    if env:
+        return env
+    try:
+        # Lazy import to avoid a circular dep at module load.
+        from app.config import load_db_config, build_database_url
+        cfg = load_db_config()
+        if cfg:
+            url = build_database_url(cfg)
+            if url:
+                return url
+    except Exception:
+        # Any failure (config missing, malformed, driver not installed)
+        # falls through to the SQLite default rather than crashing the app.
+        pass
+    return _default_sqlite_url()
 
 
 def is_sqlite(url: str) -> bool:

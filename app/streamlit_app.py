@@ -133,6 +133,36 @@ _HELP: dict[str, str] = {
         "Only return work performed on or after this date (inclusive).",
     'work_date_to':
         "Only return work performed on or before this date (inclusive).",
+
+    # ---- Setup tab ----
+    'setup_mode':
+        "Database mode. 'Local SQLite' stores everything in a single file "
+        "in the project folder and needs no auth. 'Remote database' lets "
+        "you point at a PostgreSQL / MySQL / MSSQL server.",
+    'setup_driver':
+        "SQLAlchemy dialect + driver. Pick the one that matches your DB "
+        "server. The matching driver package must be installed "
+        "(see requirements.txt for the optional ones).",
+    'setup_host':
+        "Hostname or IP of the database server. Use 'localhost' or "
+        "127.0.0.1 if the DB runs on the same machine as the dashboard.",
+    'setup_port':
+        "TCP port the DB server listens on. Defaults: 5432 (PostgreSQL), "
+        "3306 (MySQL), 1433 (MSSQL).",
+    'setup_login':
+        "Database username. Use a dedicated, low-privilege user if your "
+        "DB team supports it; don't reuse 'sa' / 'postgres' / 'root'.",
+    'setup_password':
+        "Password for the database user above. Stored in plain text inside "
+        "db_config.json (gitignored). Do NOT commit. The value gets "
+        "URL-encoded automatically.",
+    'setup_database':
+        "Database / schema name on the server. Must exist before the "
+        "dashboard can connect.",
+    'setup_sqlite_path':
+        "Path to the SQLite database file, relative to the project folder "
+        "(e.g. './database.sqlite') or absolute. The parent folder is "
+        "created automatically on save.",
 }
 
 
@@ -602,6 +632,128 @@ def render_search_tab() -> None:
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Tab 5 - Setup (database configuration)
+# ---------------------------------------------------------------------------
+def render_setup_tab() -> None:
+    """UI for choosing Local SQLite vs Remote database, and persisting the
+    choice to db_config.json. After a successful save the engine is
+    reset and the schema is re-applied against the new DB.
+    """
+    from app import config as _appcfg
+    from app.db import reset_engine, init_db
+    from app.paths import get_database_url
+
+    st.header('Setup · database connection')
+    st.caption(
+        'Pick **Local SQLite** for a single-file database in the project '
+        'folder, or **Remote** to point at a PostgreSQL / MySQL / MSSQL '
+        'server. Saved to `db_config.json` (gitignored). Env var '
+        '`DATABASE_URL` always wins over the file.'
+    )
+
+    cfg = _appcfg.load_db_config()
+    current_url = get_database_url()
+
+    s1, s2 = st.columns(2)
+    s1.markdown('**Current connection**')
+    s1.code(_appcfg.redact_password(current_url), language='text')
+    s2.markdown('**Config file**')
+    s2.code(_appcfg.redact_password(str(_appcfg.CONFIG_FILE)), language='text')
+
+    with st.form('setup_form'):
+        mode = st.radio(
+            'Mode',
+            ['Local SQLite', 'Remote database'],
+            index=0 if cfg.get('mode', 'local') == 'local' else 1,
+            horizontal=True,
+            help=_HELP['setup_mode'],
+        )
+        if mode == 'Local SQLite':
+            sqlite_path = st.text_input(
+                'SQLite file path',
+                value=cfg.get('sqlite_path', './database.sqlite'),
+                help=_HELP['setup_sqlite_path'],
+            )
+            payload = {'mode': 'local', 'sqlite_path': sqlite_path}
+        else:
+            drivers = ['postgresql', 'mysql+pymysql', 'mssql+pyodbc']
+            cur_driver = cfg.get('driver', 'postgresql')
+            driver = st.selectbox(
+                'Database type',
+                drivers,
+                index=drivers.index(cur_driver) if cur_driver in drivers else 0,
+                help=_HELP['setup_driver'],
+            )
+            host = st.text_input(
+                'Host',
+                value=cfg.get('host', 'localhost'),
+                help=_HELP['setup_host'],
+            )
+            port = st.number_input(
+                'Port',
+                min_value=1, max_value=65535,
+                value=int(cfg.get('port', _appcfg.DEFAULT_REMOTE_PORTS[driver])),
+                step=1,
+                help=_HELP['setup_port'],
+            )
+            login = st.text_input(
+                'Login',
+                value=cfg.get('login', ''),
+                help=_HELP['setup_login'],
+            )
+            password = st.text_input(
+                'Password',
+                value=cfg.get('password', ''),
+                type='password',
+                help=_HELP['setup_password'],
+            )
+            database = st.text_input(
+                'Database name',
+                value=cfg.get('database', ''),
+                help=_HELP['setup_database'],
+            )
+            payload = {
+                'mode'    : 'remote',
+                'driver'  : driver,
+                'host'    : host,
+                'port'    : int(port),
+                'login'   : login,
+                'password': password,
+                'database': database,
+            }
+
+        c1, c2 = st.columns(2)
+        test_btn = c1.form_submit_button('Test connection')
+        save_btn = c2.form_submit_button('Save', type='primary')
+
+    if test_btn:
+        ok, msg = _appcfg.test_connection(payload)
+        if ok:
+            st.success(msg)
+        else:
+            st.error(msg)
+
+    if save_btn:
+        try:
+            url_preview = _appcfg.build_database_url(payload)
+        except ValueError as exc:
+            st.error(f'Cannot save: {exc}')
+            return
+        try:
+            _appcfg.save_db_config(payload)
+        except OSError as exc:
+            st.error(f'Could not write config: {exc}')
+            return
+        reset_engine()
+        try:
+            init_db()
+        except Exception as exc:
+            st.warning(f'Saved, but init_db() failed on the new DB: {exc}')
+        st.success(f'Saved. Now using {_appcfg.redact_password(url_preview)}.')
+        st.rerun()
+
+
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -613,12 +765,13 @@ def main() -> None:
 
     render_sidebar()
 
-    tab_live, tab_crud, tab_kpi, tab_search = st.tabs(
-        ['Live data', 'CRUD', 'KPIs', 'Search'])
+    tab_live, tab_crud, tab_kpi, tab_search, tab_setup = st.tabs(
+        ['Live data', 'CRUD', 'KPIs', 'Search', 'Setup'])
     with tab_live:   render_live_tab()
     with tab_crud:   render_crud_tab()
     with tab_kpi:    render_kpis_tab()
     with tab_search: render_search_tab()
+    with tab_setup:  render_setup_tab()
 
 
 main()

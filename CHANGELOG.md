@@ -1,3 +1,52 @@
+## [1.1.0] - 2026-08-28
+
+### Added
+- **Setup tab** in the Streamlit UI for configuring the database at
+  runtime. The new `Setup · database connection` tab lets the user
+  pick **Local SQLite** vs **Remote database** (PostgreSQL /
+  MySQL+PyMySQL / MSSQL+PyODBC) and fill in:
+    * Local mode — SQLite file path (relative or absolute).
+    * Remote mode — driver, host, port, login, password, database name.
+  Two buttons: **Test connection** (verifies the config can reach
+  the DB without committing it) and **Save** (writes `db_config.json`,
+  resets the SQLAlchemy engine, re-runs `init_db()` against the new
+  target, reruns the page so the new connection takes effect
+  immediately).
+- **Config file resolution** in `app/paths.py:get_database_url()`:
+    1. `DATABASE_URL` env var (highest priority — preserves existing
+       `.env` / `run.py --db ...` behaviour).
+    2. `db_config.json` on disk (whatever the Setup tab last saved).
+    3. Built-in default: local SQLite in the project folder.
+- New module `app/config.py` providing:
+    * `load_db_config()` / `save_db_config()` — JSON on disk,
+      atomic write via temp-file + rename.
+    * `build_database_url(cfg)` — turns the config dict into a
+      SQLAlchemy URL string with proper `urllib.parse.quote_plus` on
+      user / password.
+    * `redact_password(url)` — masks the password segment of a URL
+      for safe display in the UI / logs.
+    * `test_connection(cfg)` — actually opens a connection to verify
+      the config is valid; returns (ok, message).
+- New function `app.db.reset_engine()` that drops the cached engine
+  + session factory so the next call to `get_engine()` re-resolves
+  the URL and creates a fresh engine against the new DB.
+- All 8 new Setup-tab form fields carry tooltips in the existing
+  `_HELP` dict (`setup_mode`, `setup_driver`, `setup_host`,
+  `setup_port`, `setup_login`, `setup_password`, `setup_database`,
+  `setup_sqlite_path`).
+
+### Notes
+- This is a new feature, backward-compatible (default behaviour
+  unchanged when no config file exists). Bumps 1.0.6 -> 1.1.0,
+  MINOR per SemVer.
+- **Security:** the password is stored in plain text inside
+  `db_config.json` because the Setup tab has to feed it back into
+  the UI on the next page load. `db_config.json` is now
+  `.gitignore`d, but you should still treat the file as a secret:
+  don't commit it, don't back it up to a non-encrypted share, and
+  prefer using a low-privilege, database-local user.
+
+
 ## [1.0.6] - 2026-08-28
 
 ### Added

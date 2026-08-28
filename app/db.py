@@ -1,7 +1,7 @@
 """Database engine + session factory.
 
-Reads `DATABASE_URL` from the environment (set by run.py --db or .env).
-Falls back to a local SQLite file in the project root.
+Resolves `DATABASE_URL` by precedence (env var > db_config.json >
+default SQLite), so the Setup tab can switch databases at runtime.
 
 Supports any URL SQLAlchemy accepts:
   * sqlite:///path/to/file.db
@@ -23,6 +23,22 @@ from app.paths import get_database_url, is_sqlite
 
 _engine: Engine | None = None
 _SessionLocal: sessionmaker | None = None
+
+
+def reset_engine() -> None:
+    """Drop the cached engine + session factory so the next call to
+    ``get_engine()`` re-resolves ``get_database_url()`` and creates a
+    fresh engine. Called by the Setup tab after the user saves a new
+    configuration.
+    """
+    global _engine, _SessionLocal
+    if _engine is not None:
+        try:
+            _engine.dispose()
+        except Exception:
+            pass
+    _engine = None
+    _SessionLocal = None
 
 
 def get_engine() -> Engine:
