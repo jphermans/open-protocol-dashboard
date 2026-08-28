@@ -287,9 +287,16 @@ init_db()
 # ---------------------------------------------------------------------------
 def render_sidebar() -> None:
     with st.sidebar:
-        # (Logo slot intentionally empty in v1.2.3 — the asset is still
-        # bundled for the README banner; the in-app surfaces go back to
-        # the wrench emoji for a quieter look.)
+        # Brand block — Atlas Copco logo (bundled in assets/atlas_copco_logo.png),
+        # restored in v1.2.8 after the v1.2.3 logo-lightening pass. The page_icon
+        # and the main header keep the wrench emoji for a quieter look; the
+        # sidebar is the place where the logo doesn't conflict with the title.
+        # The if/else keeps the app bootable if the asset file is missing
+        # (e.g. running just the .py without the repo folder).
+        try:
+            st.image(str(LOGO_FILE), width=160)
+        except (FileNotFoundError, TypeError, ValueError):
+            st.markdown(f'### {WRENCH} Tool CRUD Dashboard')
         st.markdown(f'### {version_string()}')
         st.caption(f'Platform: **{PLATFORM}**')
         st.caption(f'DB: `{get_database_url()}`')

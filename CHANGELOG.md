@@ -1,3 +1,13 @@
+## [1.2.8] - 2026-08-28
+
+### Changed
+- **Sidebar logo restored** — the Atlas Copco logo is back at the top of the
+  sidebar (`render_sidebar()` in `app/streamlit_app.py`), wrapped in a
+  try/except so the app stays bootable if the asset file is missing.
+  The main header (`st.title`) and browser favicon (`st.set_page_config`
+  `page_icon`) keep the `🔧` wrench emoji for a quieter look; the logo
+  lives only in the sidebar brand block. Reverse of the v1.2.3 cleanup.
+
 ## [1.2.7] - 2026-08-28
 
 ### Fixed
