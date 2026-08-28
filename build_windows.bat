@@ -13,8 +13,9 @@ pip install pyinstaller
 pyinstaller --noconfirm ^
   --onefile ^
   --windowed ^
-  --name OpenProtocolDashboard ^
+  --name ToolCRUDDashboard ^
   --add-data "app;app" ^
+  --add-data "assets;assets" ^
   --collect-all streamlit ^
   --collect-all sqlalchemy ^
   --collect-all pandas ^

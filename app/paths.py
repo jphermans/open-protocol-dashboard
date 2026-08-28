@@ -18,6 +18,11 @@ from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 
+# Bundled static assets (logo, icons). These travel with the repo and
+# inside PyInstaller builds (see build_windows.bat --add-data flag).
+ASSETS_DIR = PROJECT_DIR / "assets"
+LOGO_FILE = ASSETS_DIR / "atlas_copco_logo.png"
+
 
 def _detect_platform() -> str:
     s = sys.platform

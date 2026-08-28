@@ -1,3 +1,43 @@
+## [1.2.2] - 2026-08-28
+
+### Added
+- **Atlas Copco logo** bundled at `assets/atlas_copco_logo.png`
+  (889×281 px, RGBA, transparent background). The same file is used
+  across **every visible surface** of the dashboard so the branding
+  looks consistent in all appearances:
+    * **Browser tab / favicon** — set via `st.set_page_config(page_icon=…)`.
+    * **Sidebar header** — full-width `st.image(...)` at the top of the
+      sidebar so the logo is visible while navigating tabs.
+    * **Main page header** — placed in a 1:6 column layout alongside
+      the title so it sits in the upper-left of the main content area.
+    * **README.md** — `<img src="assets/atlas_copco_logo.png" …>` at the
+      top of the file, centered, 360 px wide.
+    * **PyInstaller bundle** — `build_windows.bat` now passes
+      `--add-data "assets;assets"` so the logo is packed inside the
+      standalone `.exe` and resolves correctly at runtime.
+
+### Changed
+- `app/paths.py` — new `ASSETS_DIR` and `LOGO_FILE` constants
+  pointing at the project-rooted `assets/` folder.
+- `app/streamlit_app.py` — imports `LOGO_FILE` and uses it for the
+  favicon, the sidebar image, and the main-header logo column.
+  Falls back silently to the existing `🔧` page-icon emoji if the
+  asset is missing (e.g. running tests without the bundled logo).
+- `build_windows.bat` — exe renamed `OpenProtocolDashboard` →
+  `ToolCRUDDashboard`; new `--add-data "assets;assets"` line.
+- `README.md` — logo image added above the H1; version badge
+  bumped 1.2.1 → 1.2.2.
+- `__version__` bumped `1.2.1` → `1.2.2` (PATCH per SemVer:
+  visual/UI asset addition, no behaviour change).
+
+### Notes
+- The logo asset is a 887×281 RGBA PNG that came from a
+  `removebg`-processed source — transparent background verified.
+- If the asset is ever moved or renamed, only `app/paths.py`'s
+  `LOGO_FILE` constant needs updating; the rest of the code picks
+  it up via the import.
+
+
 ## [1.2.1] - 2026-08-28
 
 ### Changed
