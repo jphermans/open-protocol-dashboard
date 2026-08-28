@@ -277,16 +277,16 @@ def _render_create_form() -> None:
         st.subheader('New maintenance entry')
         c1, c2, c3 = st.columns(3)
         with c1:
-            executor = st.text_input('Executor (UITVOERDER)', placeholder='Voornaam Achternaam')
-            sap_order = st.text_input('SAP order (ORDER SAP)', placeholder='0000000000')
+            executor = st.text_input('Executor', placeholder='First Last')
+            sap_order = st.text_input('SAP order', placeholder='0000000000')
             sap_status_options = st.text_input('SAP status options', placeholder='optional')
         with c2:
-            status_options = ['Afgewerkt', 'In uitvoering', 'Geannuleerd', 'Wachten op onderdelen']
-            status = st.selectbox('Status (AFWERING STATUS)', status_options, index=0)
-            work_date = st.date_input('Date (DATUM)', value=date.today())
+            status_options = ['Finished', 'In progress', 'Cancelled', 'Waiting for parts']
+            status = st.selectbox('Status', status_options, index=0)
+            work_date = st.date_input('Date', value=date.today())
         with c3:
-            start_time = st.text_input('Start time (BEGIN)', placeholder='HH:MM')
-            end_time   = st.text_input('End time (EIND)',   placeholder='HH:MM')
+            start_time = st.text_input('Start time', placeholder='HH:MM')
+            end_time   = st.text_input('End time',   placeholder='HH:MM')
 
         st.markdown('**Optional Open Protocol fields**')
         d1, d2, d3, d4 = st.columns(4)
@@ -351,8 +351,8 @@ def _render_update_form() -> None:
             executor  = st.text_input('Executor', value=row.get('executor', '') or '')
             sap_order = st.text_input('SAP order', value=row.get('sap_order', '') or '')
         with c2:
-            status_opts = ['Afgewerkt', 'In uitvoering', 'Geannuleerd', 'Wachten op onderdelen']
-            current = row.get('status') or 'Afgewerkt'
+            status_opts = ['Finished', 'In progress', 'Cancelled', 'Waiting for parts']
+            current = row.get('status') or 'Finished'
             try:
                 idx = status_opts.index(current)
             except ValueError:

@@ -1,17 +1,50 @@
+## [1.0.4] - 2026-08-28
+
+### Changed
+- Project is now English-only. All UI labels, form labels, default
+  status values, and inline comments are in English.
+- Form-field label changes (`app/streamlit_app.py`):
+    * `Executor (UITVOERDER)`              → `Executor`
+    * `Status (AFWERING STATUS)`           → `Status`
+    * `Date (DATUM)`                       → `Date`
+    * `Start time (BEGIN)`                 → `Start time`
+    * `End time (EIND)`                    → `End time`
+    * `SAP order (ORDER SAP)`              → `SAP order`
+- Default status options changed from Dutch to English:
+    * `['Afgewerkt', 'In uitvoering',
+         'Geannuleerd', 'Wachten op onderdelen']`
+       → `['Finished', 'In progress',
+           'Cancelled', 'Waiting for parts']`
+- Executor placeholder changed: `Voornaam Achternaam` → `First Last`.
+- README.md and CHANGELOG.md prose cleaned up — no remaining Dutch
+  work-order column references (`UITVOERDER`, `AFWERING STATUS`, etc.).
+- `app/models.py` docstring rewritten to describe the work-order
+  columns using their English equivalents; inline `# DUTCH` comments
+  removed from individual column definitions (the section header now
+  just reads `XLSX-derived work-order columns`).
+
+### Notes
+- This is a copy/UI-change PATCH bump — no schema change, no behaviour
+  change, no dependency change. Existing rows in the DB still hold
+  whatever status string was written at the time (mix of Dutch and
+  English is harmless for full-text filtering; use the status filter
+  on the Search tab to scope by either language).
+
+
 ## [1.0.3] - 2026-08-28
 
 ### Changed
 - `app/streamlit_app.py` form-field placeholders no longer reference
   shop-floor data. Replacements:
     * `placeholder='Sandro Mura'`        → `placeholder='Voornaam Achternaam'`
-      (Executor / UITVOERDER field)
+      (Executor / VOORNAAM + ACHTERNAAM field — placeholder text only)
     * `placeholder='192.168.188.120'`    → `placeholder='10.0.0.1'`
       (Controller IP field — the previous value was the actual
       production controller IP and would have leaked the shop-floor
       network topology into the public repo)
     * `placeholder='FSTDEC8556'`         → `placeholder='0000000000'`
-      (SAP order / ORDER SAP field — the previous value looked like a
-      real SAP order number)
+      (SAP order field — the previous value looked like a real
+      SAP order number)
   No functional change; this is purely a hygiene / privacy cleanup so
   nothing shop-floor-specific ends up in the public repository.
   (Reported by the user before the public release.)
@@ -38,9 +71,9 @@
 ### Added
 - **CRUD layer** for maintenance log entries (`app/crud.py`).
 - **SQLAlchemy ORM** model `MaintenanceLog` with the full schema from the
-  XLSX template 'TMC Herstellingen ASML' (Dutch columns: UITVOERDER,
-  AFWERING STATUS, ORDER SAP, STATUS OPTIES SAP, DATUM, BEGIN, EIND)
-  plus every Open Protocol field (MID 0040 / 0060 / 0080).
+  XLSX template 'TMC Herstellingen ASML' (executor, status, SAP order,
+  SAP status options, work date, start time, end time) plus every Open
+  Protocol field (MID 0040 / 0060 / 0080).
 - **Remote DB support** via `DATABASE_URL` env var. Default is a local
   SQLite file in the project folder; PostgreSQL, MySQL, MSSQL also work
   once the matching driver is added to `requirements.txt`.

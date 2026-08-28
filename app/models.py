@@ -2,9 +2,9 @@
 
 The schema merges two worlds:
 
-* **Work-order columns** from the XLSX template 'TMC Herstellingen ASML'
-  (Dutch: UITVOERDER, AFWERING STATUS, ORDER SAP, STATUS OPTIES SAP,
-  DATUM, BEGIN, EIND).
+* **Work-order columns** sourced from the 'TMC Herstellingen ASML'
+  XLSX template (executor, status, SAP order, SAP status options,
+  work date, start time, end time).
 
 * **Open Protocol columns** from MID 0040 (tool data) and MID 0060 (last
   tightening result), used when the controller pull auto-fills a row.
@@ -44,14 +44,14 @@ class MaintenanceLog(Base):
     source     = Column(String(16),  default="manual")  # 'manual' / 'controller'
     notes      = Column(Text,        nullable=True)
 
-    # ---- XLSX-derived work-order columns (Dutch labels) -----------------
-    executor            = Column(String(64),  nullable=True)   # UITVOERDER
-    status              = Column(String(32),  nullable=True)   # AFWERING STATUS
-    sap_order           = Column(String(32),  nullable=True)   # ORDER SAP
-    sap_status_options  = Column(String(64),  nullable=True)   # STATUS OPTIES SAP
-    work_date           = Column(Date,        nullable=True)   # DATUM
-    start_time          = Column(String(8),   nullable=True)   # BEGIN  (HH:MM:SS)
-    end_time            = Column(String(8),   nullable=True)   # EIND   (HH:MM:SS)
+    # ---- XLSX-derived work-order columns ------------------------------
+    executor            = Column(String(64),  nullable=True)
+    status              = Column(String(32),  nullable=True)
+    sap_order           = Column(String(32),  nullable=True)
+    sap_status_options  = Column(String(64),  nullable=True)
+    work_date           = Column(Date,        nullable=True)
+    start_time          = Column(String(8),   nullable=True)   # HH:MM:SS
+    end_time            = Column(String(8),   nullable=True)   # HH:MM:SS
 
     # ---- Open Protocol MID 0040 ----------------------------------------
     tool_serial             = Column(String(32),  nullable=True)

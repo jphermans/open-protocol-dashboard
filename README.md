@@ -82,7 +82,7 @@
 </tr>
 <tr>
 <td>� <b>SQLAlchemy ORM</b></td>
-<td>One model — <code>MaintenanceLog</code> — that merges the XLSX work-order columns (Dutch: <i>UITVOERDER</i>, <i>AFWERING STATUS</i>, <i>ORDER SAP</i>, <i>STATUS OPTIES SAP</i>, <i>DATUM</i>, <i>BEGIN</i>, <i>EIND</i>) with every Open Protocol field. Default backend is SQLite, swap to PostgreSQL/MySQL/MSSQL via <code>DATABASE_URL</code>.</td>
+<td>One model — <code>MaintenanceLog</code> — that merges the XLSX work-order columns (executor, status, SAP order, SAP status options, work date, start time, end time) with every Open Protocol field. Default backend is SQLite, swap to PostgreSQL/MySQL/MSSQL via <code>DATABASE_URL</code>.</td>
 </tr>
 <tr>
 <td>📊 <b>KPI Dashboard</b></td>
@@ -259,7 +259,7 @@ The result is auto-saved as a new log row, or flagged as a duplicate (🔁 toast
 - 📊 **Monthly activity** (bar chart, last 12 months, backfilled)
 - 🏆 **Top executors** (per-technician count)
 - � **Top tools** (per-tool count)
-- 📋 **Status distribution** (Afgewerkt / In uitvoering / …)
+- 📋 **Status distribution** (Finished / In progress / Cancelled / Waiting for parts)
 - ⚠️ **Calibration overdue alerts** (tools older than 12 months)
 
 ### 🔍 Search
@@ -300,14 +300,14 @@ CREATE TABLE maintenance_log (
     source                    VARCHAR(16) DEFAULT 'manual',  -- 'manual' / 'controller'
     notes                     TEXT,
 
-    -- XLSX-derived work-order columns (Dutch labels)
-    executor                  VARCHAR(64),   -- UITVOERDER
-    status                    VARCHAR(32),   -- AFWERING STATUS
-    sap_order                 VARCHAR(32),   -- ORDER SAP
-    sap_status_options        VARCHAR(64),   -- STATUS OPTIES SAP
-    work_date                 DATE,          -- DATUM
-    start_time                VARCHAR(8),    -- BEGIN  (HH:MM:SS)
-    end_time                  VARCHAR(8),    -- EIND   (HH:MM:SS)
+    -- XLSX-derived work-order columns
+    executor                  VARCHAR(64),
+    status                    VARCHAR(32),
+    sap_order                 VARCHAR(32),
+    sap_status_options        VARCHAR(64),
+    work_date                 DATE,
+    start_time                VARCHAR(8),    -- HH:MM:SS
+    end_time                  VARCHAR(8),    -- HH:MM:SS
 
     -- Open Protocol MID 0040
     tool_serial               VARCHAR(32),
