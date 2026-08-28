@@ -1,3 +1,18 @@
+## [1.2.10] - 2026-08-28
+
+### Added
+- `.env` is now the canonical local storage for the GitHub push PAT (gitignored, chmod 600).
+- `scripts/push_with_pat.sh`: env-var-only one-shot push wrapper (reads `.env`, pushes branch + tag, restores SSH remote, wipes token + bash history).
+- `.env.example`: new top section documenting the `GITHUB_TOKEN` placeholder and the safe-handling rules.
+- `README.md`: new "📤 Push to GitHub" section explaining SSH vs PAT push and what is tracked vs not.
+
+### Changed
+- The "paste the token in chat" workflow is retired as of v1.2.10.
+
+### Security
+- PAT is never on argv, never in shell history, never echoed.
+- `.env` is gitignored; only `.env.example` (placeholder) is tracked.
+
 ## [1.2.9] - 2026-08-28
 
 ### Changed
