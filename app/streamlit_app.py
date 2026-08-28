@@ -142,7 +142,11 @@ _HELP: dict[str, str] = {
     'setup_driver':
         "SQLAlchemy dialect + driver. Pick the one that matches your DB "
         "server. The matching driver package must be installed "
-        "(see requirements.txt for the optional ones).",
+        "(see requirements.txt for the optional ones). "
+        "Supported: 'postgresql' (psycopg2-binary / psycopg), "
+        "'mysql+pymysql' (pymysql), 'mssql+pyodbc' (pyodbc + ODBC driver), "
+        "'oracle+oracledb' (oracledb), 'snowflake' (snowflake-sqlalchemy), "
+        "'duckdb' (duckdb_engine). Default port is auto-filled per choice.",
     'setup_host':
         "Hostname or IP of the database server. Use 'localhost' or "
         "127.0.0.1 if the DB runs on the same machine as the dashboard.",
@@ -683,11 +687,13 @@ def render_setup_tab() -> None:
                 'Database type',
                 drivers,
                 index=drivers.index(cur_driver) if cur_driver in drivers else 0,
+                format_func=lambda d: _appcfg.DRIVER_LABELS.get(d, d),
                 help=_HELP['setup_driver'],
             )
             host = st.text_input(
                 'Host',
                 value=cfg.get('host', 'localhost'),
+                placeholder='db.example.com or 10.0.0.1',
                 help=_HELP['setup_host'],
             )
             port = st.number_input(
@@ -700,17 +706,20 @@ def render_setup_tab() -> None:
             login = st.text_input(
                 'Login',
                 value=cfg.get('login', ''),
+                placeholder='op_dashboard',
                 help=_HELP['setup_login'],
             )
             password = st.text_input(
                 'Password',
                 value=cfg.get('password', ''),
+                placeholder='********',
                 type='password',
                 help=_HELP['setup_password'],
             )
             database = st.text_input(
                 'Database name',
                 value=cfg.get('database', ''),
+                placeholder='open_protocol',
                 help=_HELP['setup_database'],
             )
             payload = {
@@ -752,6 +761,44 @@ def render_setup_tab() -> None:
             st.warning(f'Saved, but init_db() failed on the new DB: {exc}')
         st.success(f'Saved. Now using {_appcfg.redact_password(url_preview)}.')
         st.rerun()
+
+    _render_supported_databases_panel(_appcfg)
+
+
+def _render_supported_databases_panel(_appcfg) -> None:
+    """Reference panel shown under the Setup form: every DB system the
+    dashboard can talk to, with driver name, default port, example URL,
+    pip-install command, and notes. Helps users see the door is wider
+    than the 3-option selectbox above (the extra drivers can be enabled
+    by editing db_config.json directly or via DATABASE_URL env var).
+    """
+    st.divider()
+    with st.expander(
+        'Supported database systems (reference panel)',
+        expanded=False,
+    ):
+        st.caption(
+            'Only the three drivers in the **Database type** dropdown are exposed '
+            'in the form. The other systems below work too — set them via the '
+            '`DATABASE_URL` env var or by editing `db_config.json` directly.'
+        )
+        for spec in _appcfg.SUPPORTED_DATABASES:
+            port = spec['default_port']
+            port_str = str(port) if port else '—'
+            st.markdown(
+                f"#### {spec['display_name']}"
+                f"  ·  `{spec['key']}`  ·  default port **{port_str}**"
+            )
+            st.markdown(
+                f"- **Example URL:** `{spec['example_url']}`"
+            )
+            st.markdown(
+                f"- **Install driver:** `{spec['pip_install']}`"
+            )
+            st.markdown(
+                f"- **Notes:** {spec['notes']}"
+            )
+            st.divider()
 
 
 # Main

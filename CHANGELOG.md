@@ -1,3 +1,73 @@
+## [1.1.2] - 2026-08-28
+
+### Added
+- **Example placeholders** on every remote-database Setup-tab field, so
+  the user can see what a typical value looks like before typing:
+    * Host — `db.example.com or 10.0.0.1`
+    * Login — `op_dashboard`
+    * Password — `********` (masked)
+    * Database name — `open_protocol`
+- **Human-readable labels** in the **Database type** dropdown. The
+  raw SQLAlchemy prefix (`postgresql`, `mysql+pymysql`, `mssql+pyodbc`)
+  is now shown as `PostgreSQL (psycopg2-binary / psycopg)` etc., via the
+  new `DRIVER_LABELS` dict in `app/config.py`.
+- **Reference panel** under the Setup form (`Supported database
+  systems (reference panel)` expander). For every DB system the
+  dashboard can talk to it lists:
+    * SQLAlchemy key (`sqlite`, `postgresql`, `mysql+pymysql`,
+      `mssql+pyodbc`, `oracle+oracledb`, `snowflake`, `duckdb`)
+    * Display name + default port
+    * Example URL (password redacted)
+    * Exact `pip install` command for the driver
+    * Notes (ODBC requirement for MSSQL, Oracle `service_name`,
+      Snowflake account locator, DuckDB OLAP angle, ...)
+- `SUPPORTED_DATABASES` list (7 entries) added to `app/config.py` —
+  drives the reference panel. Adding a new driver is now a one-line
+  dict append, no UI changes needed.
+
+### Notes
+- PATCH bump per SemVer (1.1.1 → 1.1.2): no schema or API change,
+  the selectbox still exposes the original three drivers; the
+  reference panel is read-only documentation that helps users
+  realise the door is wider than the visible list.
+- The extra drivers (`oracle+oracledb`, `snowflake`, `duckdb`) are
+  reachable today via `DATABASE_URL` env var or by hand-editing
+  `db_config.json`; promoting them to the selectbox is a future
+  MINOR-bump UI change.
+
+
+## [1.1.1] - 2026-08-28
+
+### Changed
+- **Dates displayed as `dd/mm/yyyy`** everywhere in the UI (work-date
+  input, KPI chart axis labels, live and search tables, update form
+  pre-fill). Internal storage stays ISO `YYYY-MM-DD` so SQL range
+  queries keep working. Helper functions `to_ddmmyyyy()` and
+  `from_ddmmyyyy()` in the new `app/dates.py` are the single source
+  of truth.
+- **Required-field guard** on Create and Update forms. The minimum
+  required set is `tool_serial`, `work_date`, `executor`. The Save
+  button is `disabled` and labelled `Fill required fields to save`
+  until the form is complete, with live red error hints on each
+  missing field. CRUD `create_log()` / `update_log()` raise
+  `ValueError` server-side as a backstop, rendered as `st.error`
+  in the UI.
+
+### Fixed
+- Empty-DB crash: `pd.DataFrame([])` no longer triggers `KeyError`
+  on `set_index('xxx')`. The `_safe_df()` helper, added in v1.0.2
+  for the KPI tab, is now also used on the Search results and the
+  Live tab.
+
+### Notes
+- PATCH bump per SemVer (1.1.0 → 1.1.1): UX improvement only, no
+  schema or API change.
+- Pre-existing rows whose `status` was written in Dutch
+  (e.g. `Afgewerkt`) are untouched. To migrate them to English,
+  ask for a one-click "Rename old status values" button in a future
+  PATCH.
+
+
 ## [1.1.0] - 2026-08-28
 
 ### Added

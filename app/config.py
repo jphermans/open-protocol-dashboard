@@ -55,6 +55,85 @@ DEFAULT_REMOTE_PORTS: dict[str, int] = {
     "mssql+pyodbc": 1433,
 }
 
+# Human-readable labels for each SQLAlchemy dialect + driver. Used by the
+# Setup tab selectbox so users see "PostgreSQL (psycopg2-binary)" instead
+# of the raw "postgresql" URL prefix. Unknown drivers fall back to their
+# raw value via `DRIVER_LABELS.get(d, d)`.
+DRIVER_LABELS: dict[str, str] = {
+    "postgresql":    "PostgreSQL (psycopg2-binary / psycopg)",
+    "mysql+pymysql": "MySQL / MariaDB (pymysql)",
+    "mssql+pyodbc":  "Microsoft SQL Server (pyodbc + ODBC Driver)",
+}
+
+# Reference panel shown in the Setup tab expander. Documents every DB
+# system the dashboard can talk to, not just the 3 currently in the
+# selectbox — so users know the door is wider than the visible list.
+#
+#   key               : SQLAlchemy dialect + driver string
+#   display_name      : what to show users
+#   default_port      : canonical TCP port (or None for file-based)
+#   example_url       : realistic placeholder URL with redaction markers
+#   pip_install       : exact pip install command for the driver
+#   notes             : extra info (ODBC requirement, SSL, etc.)
+SUPPORTED_DATABASES: list[dict[str, object]] = [
+    {
+        "key"          : "sqlite",
+        "display_name" : "SQLite (file-based, no driver needed)",
+        "default_port" : None,
+        "example_url"  : "sqlite:////var/lib/open-protocol/database.sqlite",
+        "pip_install"  : "— (built into Python)",
+        "notes"        : "Single file. No auth, no network, no extra deps.",
+    },
+    {
+        "key"          : "postgresql",
+        "display_name" : "PostgreSQL",
+        "default_port" : 5432,
+        "example_url"  : "postgresql://op_dashboard:***@db.example.com:5432/open_protocol",
+        "pip_install"  : "pip install 'psycopg2-binary'   # or  pip install psycopg",
+        "notes"        : "Default driver. For production use 'psycopg' (v3) without 'binary'.",
+    },
+    {
+        "key"          : "mysql+pymysql",
+        "display_name" : "MySQL / MariaDB",
+        "default_port" : 3306,
+        "example_url"  : "mysql+pymysql://op_dashboard:***@db.example.com:3306/open_protocol",
+        "pip_install"  : "pip install pymysql",
+        "notes"        : "Pure-Python driver, works with both MySQL and MariaDB.",
+    },
+    {
+        "key"          : "mssql+pyodbc",
+        "display_name" : "Microsoft SQL Server (MSSQL)",
+        "default_port" : 1433,
+        "example_url"  : "mssql+pyodbc://op_dashboard:***@db.example.com:1433/open_protocol?driver=ODBC+Driver+17+for+SQL+Server",
+        "pip_install"  : "pip install pyodbc    # also install 'ODBC Driver 17/18 for SQL Server' from Microsoft",
+        "notes"        : "Requires an OS-level ODBC driver. On Linux: 'msodbcsql17' Debian package.",
+    },
+    {
+        "key"          : "oracle+oracledb",
+        "display_name" : "Oracle Database",
+        "default_port" : 1521,
+        "example_url"  : "oracle+oracledb://op_dashboard:***@db.example.com:1521/?service_name=OPENPROT",
+        "pip_install"  : "pip install oracledb    # successor to the deprecated cx_Oracle",
+        "notes"        : "Use 'service_name' or 'sid' query string; no driver in the selectbox yet (edit db_config.json manually).",
+    },
+    {
+        "key"          : "snowflake",
+        "display_name" : "Snowflake (cloud DW)",
+        "default_port" : 443,
+        "example_url"  : "snowflake://op_dashboard:***@acme.eu-west-1.snowflakecomputing.com/open_protocol?warehouse=COMPUTE_WH",
+        "pip_install"  : "pip install snowflake-sqlalchemy",
+        "notes"        : "Use the Snowflake account locator, not the full URL hostname.",
+    },
+    {
+        "key"          : "duckdb",
+        "display_name" : "DuckDB (analytical, file-based)",
+        "default_port" : None,
+        "example_url"  : "duckdb:///var/lib/open-protocol/analytics.duckdb",
+        "pip_install"  : "pip install duckdb-engine duckdb",
+        "notes"        : "OLAP-style queries. Useful for the KPI tab on very large logs.",
+    },
+]
+
 
 # ---------------------------------------------------------------------------
 # Load / save
