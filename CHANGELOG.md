@@ -1,3 +1,17 @@
+## [1.2.6] - 2026-08-28
+
+### Fixed
+- **App startup crash** - ImportError on macOS / Linux / Windows:
+  \`ImportError: cannot import name 'get_engine' from 'app.paths'\`.
+  The v1.2.5 migration added a duplicate \`init_db()\` at the bottom of
+  \`app/db.py\` that incorrectly did \`from app.paths import get_engine\`,
+  but \`get_engine\` lives in \`app/db.py\` itself, not in \`app/paths.py\`.
+  The duplicate also shadowed the working \`init_db()\` higher up via
+  Python last-wins, so the broken copy was the one that ran. Fixed by:
+    * Removing the duplicate.
+    * Extending the surviving \`init_db()\` to call \`_ensure_tool_type_column(engine)\`
+      so the v1.2.5 tool_type migration still runs on every startup.
+
 ## [1.2.5] - 2026-08-28
 
 ### Added

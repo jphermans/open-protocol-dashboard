@@ -69,8 +69,12 @@ def get_session_factory() -> sessionmaker:
 
 
 def init_db() -> None:
-    """Create tables if they do not exist. Idempotent."""
-    Base.metadata.create_all(get_engine())
+    """Create tables if they do not exist and run lightweight in-place
+    migrations (currently: tool_type column). Idempotent.
+    """
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+    _ensure_tool_type_column(engine)
 
 
 @contextmanager
@@ -118,12 +122,3 @@ def _ensure_tool_type_column(engine) -> None:
             conn.execute(text("ALTER TABLE maintenance_log ADD COLUMN tool_type VARCHAR(32)"))
 
 
-def init_db() -> None:
-    """Create the maintenance_log table if it doesn't exist, then run
-    lightweight in-place migrations (currently: tool_type column)."""
-    from app.models import Base
-    from app.paths import get_engine
-
-    engine = get_engine()
-    Base.metadata.create_all(engine)
-    _ensure_tool_type_column(engine)
