@@ -1,3 +1,22 @@
+## [1.0.3] - 2026-08-28
+
+### Changed
+- `app/streamlit_app.py` form-field placeholders no longer reference
+  shop-floor data. Replacements:
+    * `placeholder='Sandro Mura'`        → `placeholder='Voornaam Achternaam'`
+      (Executor / UITVOERDER field)
+    * `placeholder='192.168.188.120'`    → `placeholder='10.0.0.1'`
+      (Controller IP field — the previous value was the actual
+      production controller IP and would have leaked the shop-floor
+      network topology into the public repo)
+    * `placeholder='FSTDEC8556'`         → `placeholder='0000000000'`
+      (SAP order / ORDER SAP field — the previous value looked like a
+      real SAP order number)
+  No functional change; this is purely a hygiene / privacy cleanup so
+  nothing shop-floor-specific ends up in the public repository.
+  (Reported by the user before the public release.)
+
+
 ## [1.0.2] - 2026-08-28
 
 ### Fixed

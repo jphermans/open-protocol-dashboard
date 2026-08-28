@@ -171,7 +171,7 @@ def render_live_tab() -> None:
                'every time, so it is safe to spam the buttons.')
 
     ip   = st.text_input('IP address of controller', key='ip',
-                         placeholder='192.168.188.120')
+                         placeholder='10.0.0.1')
     port = st.text_input('Port of controller',       key='port',
                          value='4545')
 
@@ -277,8 +277,8 @@ def _render_create_form() -> None:
         st.subheader('New maintenance entry')
         c1, c2, c3 = st.columns(3)
         with c1:
-            executor = st.text_input('Executor (UITVOERDER)', placeholder='Sandro Mura')
-            sap_order = st.text_input('SAP order (ORDER SAP)', placeholder='FSTDEC8556')
+            executor = st.text_input('Executor (UITVOERDER)', placeholder='Voornaam Achternaam')
+            sap_order = st.text_input('SAP order (ORDER SAP)', placeholder='0000000000')
             sap_status_options = st.text_input('SAP status options', placeholder='optional')
         with c2:
             status_options = ['Afgewerkt', 'In uitvoering', 'Geannuleerd', 'Wachten op onderdelen']
