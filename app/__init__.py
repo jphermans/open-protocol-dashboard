@@ -1,4 +1,4 @@
-"""Open Protocol CRUD dashboard — app package.
+"""Tool CRUD Dashboard — app package.
 
 Versioning follows Semantic Versioning 2.0 (https://semver.org):
     MAJOR.MINOR.PATCH
@@ -26,6 +26,12 @@ Lazy public re-exports:
     --version` work even when sqlalchemy is not installed in the
     Python that is currently on PATH (e.g. system Python instead of
     the project venv).
+
+Product naming:
+    The product title is "Tool CRUD Dashboard" (since v1.2.1).
+    Historical references to "Open Protocol CRUD Dashboard" inside
+    older CHANGELOG entries and the v1.0.0-era README still use the
+    old name on purpose — the changelog is an immutable record.
 """
 from __future__ import annotations
 
@@ -34,13 +40,13 @@ import importlib
 # ---------------------------------------------------------------------------
 # Version
 # ---------------------------------------------------------------------------
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 __version_info__ = tuple(int(x) for x in __version__.split("."))
 
 
 def version_string() -> str:
     """Plain-text version suitable for CLI banners and HTTP headers."""
-    return f"Open Protocol CRUD Dashboard v{__version__}"
+    return f"Tool CRUD Dashboard v{__version__}"
 
 
 # ---------------------------------------------------------------------------

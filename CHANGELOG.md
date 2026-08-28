@@ -1,3 +1,28 @@
+## [1.2.1] - 2026-08-28
+
+### Changed
+- **Product renamed** from "Open Protocol CRUD Dashboard" to
+  **"Tool CRUD Dashboard"**. Updated everywhere the product name
+  appears:
+    * `app/__init__.py` — module docstring + `version_string()`.
+    * `app/streamlit_app.py` — module docstring + `st.set_page_config`
+      `page_title` + `st.title()` heading.
+    * `run.py` — module docstring + startup banner.
+    * `build_windows.bat` — header comment.
+    * `README.md` — H1 + run.py log example + Versioning section
+      source-of-truth reference + Project Layout.
+- `__version__` bumped `1.2.0` → `1.2.1` (PATCH per SemVer:
+  copy/wording change, no behaviour change).
+
+### Notes
+- References to **"Open Protocol"** that mean the wire protocol
+  (Atlas Copco Open Protocol, MIDs, frame parsing, controller pull,
+  etc.) are intentionally left untouched — those describe the
+  protocol, not the product name.
+- CHANGELOG history (v1.0.0 → v1.2.0) keeps the old product name
+  inside its release notes — the changelog is an immutable record.
+
+
 ## [1.2.0] - 2026-08-28
 
 ### Added

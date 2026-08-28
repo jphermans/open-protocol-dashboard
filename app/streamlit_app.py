@@ -1,4 +1,4 @@
-"""Open Protocol CRUD dashboard — Streamlit entry point.
+"""Tool CRUD Dashboard — Streamlit entry point.
 
 Run with:
     streamlit run app/streamlit_app.py
@@ -7,11 +7,17 @@ or (preferred):
 
 Layout:
   * Title + version banner
-  * Sidebar: live DB stats + platform info + refresh button
+  * Sidebar: live DB stats + platform info + auth widget + refresh button
   * Tab 1 - Live: controller pull (MID 0040 / 0060 / 0080 / 0010 / 0030)
-  * Tab 2 - CRUD: create / read / update / delete maintenance log rows
+  * Tab 2 - CRUD: create / read / browse / update / delete maintenance log rows
   * Tab 3 - KPIs: snapshot metrics + charts
   * Tab 4 - Search: filter the log table and export CSV
+  * Tab 5 - Setup: local SQLite vs remote DB configuration
+
+Product name: "Tool CRUD Dashboard" (renamed in v1.2.1). The dashboard
+talks to controllers over Atlas Copco Open Protocol; "Open Protocol"
+in the rest of this file refers to that wire protocol, not the
+product name.
 """
 from __future__ import annotations
 
@@ -191,7 +197,7 @@ def _safe_df(rows: list[dict], index_col: str) -> pd.DataFrame:
 # Page setup + DB
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title=f'Open Protocol Dashboard v{__version__}',
+    page_title=f'Tool CRUD Dashboard v{__version__}',
     page_icon='\U0001f527',
     layout='wide',
     initial_sidebar_state='expanded',
@@ -1025,7 +1031,7 @@ def _render_supported_databases_panel(_appcfg) -> None:
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
-    st.title(f'🛠 Open Protocol CRUD Dashboard')
+    st.title(f'🛠 Tool CRUD Dashboard')
     st.caption(
         f'**v{__version__}**  ·  Platform: {PLATFORM}  ·  '
         f'DB: {"SQLite (local)" if is_sqlite(get_database_url()) else get_database_url()}'

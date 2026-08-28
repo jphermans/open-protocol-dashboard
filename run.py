@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-platform launcher for the Open Protocol CRUD dashboard.
+"""Cross-platform launcher for the Tool CRUD Dashboard.
 
 Works identically on Windows, Linux, macOS, and WSL. Single-file replacement
 for the previous start.sh + start.bat pair.
@@ -228,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         # Self-contained — read __version__ straight from app/__init__.py,
         # no SQLAlchemy / Streamlit / pandas import required.
         v = _read_version_from_init()
-        print(f"Open Protocol CRUD Dashboard v{v}")
+        print(f"Tool CRUD Dashboard v{v}")
         return 0
 
     plat = detect_platform()

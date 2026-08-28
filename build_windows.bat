@@ -1,5 +1,5 @@
 @echo off
-REM Build a standalone Windows executable of the Open Protocol dashboard.
+REM Build a standalone Windows executable of the Tool CRUD Dashboard.
 REM Run from inside the project folder on a Windows machine.
 setlocal
 
