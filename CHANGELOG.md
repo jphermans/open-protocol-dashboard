@@ -1,3 +1,39 @@
+## [1.1.3] - 2026-08-28
+
+### Added
+- **Browse sub-tab** inside the CRUD tab. New `Read · Browse` panel
+  between Create and Update that lets the user step through the
+  database one row at a time with arrows:
+    * `⏮ First (newest)` — jump to the newest row
+    * `◀ Newer` — one row newer in time
+    * `Older ▶` — one row older in time
+    * `⏭ Last (oldest)` — jump to the oldest row
+    * `Jump to id` + `Go` — type any id, go straight to it
+  Buttons disable at the ends. State lives in
+  `st.session_state['browse_id']` so navigating across tabs and back
+  doesn't lose the cursor. Robust against id gaps caused by deletes
+  (cursor is always a real id, not an offset).
+- Five new helpers in `app/crud.py` powering the Browse tab:
+    * `get_log_by_offset(offset)` — fetch the row at position N
+      (0-indexed, default newest-first). Uses `ORDER BY id LIMIT 1
+      OFFSET N` so it survives deleted-id gaps.
+    * `get_prev_log(current_id)` — neighbour with the nearest larger
+      id (newer in time when browse order is desc).
+    * `get_next_log(current_id)` — neighbour with the nearest smaller
+      id (older in time).
+    * `get_first_log()` — newest row.
+    * `get_last_log()` — oldest row.
+  All five respect the `order_desc` flag so callers can flip the
+  direction without changing the UI layout.
+
+### Notes
+- PATCH bump per SemVer (1.1.2 → 1.1.3): no schema change, no API
+  change; new CRUD sub-tab and 5 new CRUD helpers.
+- The Browse sub-tab renders `work_date` as `dd/mm/yyyy` for human
+  reading while keeping the underlying value ISO `YYYY-MM-DD` in the
+  raw-fields expander.
+
+
 ## [1.1.2] - 2026-08-28
 
 ### Added

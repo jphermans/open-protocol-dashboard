@@ -47,6 +47,79 @@ def get_log(log_id: int) -> Optional[dict]:
         return row.as_display_dict() if row else None
 
 
+def get_log_by_offset(offset: int, order_desc: bool = True) -> Optional[dict]:
+    """Return the row at position `offset` in the id-sorted list.
+
+    `offset` is 0-indexed. With `order_desc=True` (default) the newest row
+    is at offset 0 and the oldest at offset (count-1). Robust against
+    id gaps caused by deletes — positions are derived from ORDER BY + LIMIT,
+    not from id arithmetic.
+    """
+    with session_scope() as s:
+        q = (select(MaintenanceLog)
+             .order_by(MaintenanceLog.id.desc() if order_desc
+                       else MaintenanceLog.id.asc())
+             .limit(1)
+             .offset(max(0, offset)))
+        row = s.execute(q).scalar_one_or_none()
+        return row.as_display_dict() if row else None
+
+
+def get_prev_log(current_id: int, order_desc: bool = True) -> Optional[dict]:
+    """Return the row whose id is the nearest neighbour smaller than `current_id`.
+
+    With `order_desc=True` (default, matches list_logs) this returns the
+    chronologically newer row when called from the Browse tab's
+    'Previous' button.
+    """
+    with session_scope() as s:
+        if order_desc:
+            q = (select(MaintenanceLog)
+                 .where(MaintenanceLog.id > current_id)
+                 .order_by(MaintenanceLog.id.asc())
+                 .limit(1))
+        else:
+            q = (select(MaintenanceLog)
+                 .where(MaintenanceLog.id < current_id)
+                 .order_by(MaintenanceLog.id.desc())
+                 .limit(1))
+        row = s.execute(q).scalar_one_or_none()
+        return row.as_display_dict() if row else None
+
+
+def get_next_log(current_id: int, order_desc: bool = True) -> Optional[dict]:
+    """Inverse of `get_prev_log`."""
+    with session_scope() as s:
+        if order_desc:
+            q = (select(MaintenanceLog)
+                 .where(MaintenanceLog.id < current_id)
+                 .order_by(MaintenanceLog.id.desc())
+                 .limit(1))
+        else:
+            q = (select(MaintenanceLog)
+                 .where(MaintenanceLog.id > current_id)
+                 .order_by(MaintenanceLog.id.asc())
+                 .limit(1))
+        row = s.execute(q).scalar_one_or_none()
+        return row.as_display_dict() if row else None
+
+
+def get_first_log(order_desc: bool = True) -> Optional[dict]:
+    """Return the newest (or oldest, if `order_desc=False`) row."""
+    with session_scope() as s:
+        q = (select(MaintenanceLog)
+             .order_by(MaintenanceLog.id.desc() if order_desc
+                       else MaintenanceLog.id.asc())
+             .limit(1))
+        row = s.execute(q).scalar_one_or_none()
+        return row.as_display_dict() if row else None
+
+
+def get_last_log(order_desc: bool = True) -> Optional[dict]:
+    """Return the oldest (or newest, if `order_desc=False`) row."""
+    return get_first_log(order_desc=not order_desc)
+
+
 def search_logs(
     *,
     executor: str = '',

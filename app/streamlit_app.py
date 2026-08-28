@@ -394,14 +394,118 @@ def render_crud_tab() -> None:
     st.caption('Create / read / update / delete rows in `maintenance_log`. '
                'Same schema as the XLSX template + all Open Protocol fields.')
 
-    mode = st.radio('Mode', ['Create', 'Update', 'Delete'], horizontal=True)
-
-    if mode == 'Create':
+    sub = st.tabs(['Create', 'Read · Browse', 'Update', 'Delete'])
+    with sub[0]:
         _render_create_form()
-    elif mode == 'Update':
+    with sub[1]:
+        _render_browse_tab()
+    with sub[2]:
         _render_update_form()
-    else:
+    with sub[3]:
         _render_delete_form()
+
+
+def _render_browse_tab() -> None:
+    """Read-only row-by-row browser with first/prev/next/last + jump-to-id.
+
+    Ordering is newest-first (descending id). Buttons disable at the
+    ends. State lives in `st.session_state['browse_id']` so navigating
+    across other tabs and back doesn't lose the cursor. Robust against
+    id gaps caused by deletes — cursor is always a real id, not an offset.
+    """
+    total = crud.count_logs()
+    if total == 0:
+        st.info('No records yet — create one or pull from controller.')
+        return
+
+    # Initialise / repair the cursor.
+    if 'browse_id' not in st.session_state or not st.session_state['browse_id']:
+        first = crud.get_first_log()
+        st.session_state['browse_id'] = first['id'] if first else None
+    cur_id = st.session_state.get('browse_id')
+    cur_row = crud.get_log(cur_id) if cur_id else None
+    if cur_row is None:
+        # The id we were on no longer exists (e.g. it was deleted).
+        cur = crud.get_last_log()
+        cur_id = cur['id'] if cur else None
+        cur_row = cur
+        st.session_state['browse_id'] = cur_id
+    if cur_row is None:
+        st.warning('No rows available.')
+        return
+
+    newest = crud.get_first_log()
+    oldest = crud.get_last_log()
+    is_newest = bool(newest and cur_row['id'] == newest['id'])
+    is_oldest = bool(oldest and cur_row['id'] == oldest['id'])
+
+    st.caption(
+        f"Row **id = {cur_row['id']}**  ·  total **{total}** rows  ·  "
+        f"newest? {'✅' if is_newest else '—'}  ·  oldest? {'✅' if is_oldest else '—'}  ·  "
+        "browse order: newest → oldest"
+    )
+
+    # Navigation buttons
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
+    if c1.button('� First (newest)', disabled=is_newest, width='stretch'):
+        if newest:
+            st.session_state['browse_id'] = newest['id']
+            st.rerun()
+    if c2.button('◀ Newer', disabled=is_newest, width='stretch'):
+        nxt = crud.get_prev_log(cur_row['id'])  # default desc: 'prev' in id = newer in time
+        if nxt:
+            st.session_state['browse_id'] = nxt['id']
+            st.rerun()
+    if c3.button('Older ▶', disabled=is_oldest, width='stretch'):
+        prv = crud.get_next_log(cur_row['id'])  # default desc: 'next' in id = older in time
+        if prv:
+            st.session_state['browse_id'] = prv['id']
+            st.rerun()
+    if c4.button('⏭ Last (oldest)', disabled=is_oldest, width='stretch'):
+        if oldest:
+            st.session_state['browse_id'] = oldest['id']
+            st.rerun()
+
+    # Jump-to-id
+    j1, j2 = st.columns([4, 1])
+    target_id = j1.number_input(
+        'Jump to id',
+        min_value=1,
+        max_value=10_000_000,
+        step=1,
+        value=int(cur_row['id']),
+        label_visibility='collapsed',
+    )
+    if j2.button('Go', width='stretch'):
+        target = crud.get_log(int(target_id))
+        if target:
+            st.session_state['browse_id'] = target['id']
+            st.rerun()
+        else:
+            st.error(f'No row with id = {int(target_id)}.')
+
+    st.divider()
+    st.markdown('##### Current row')
+
+    # Pretty-print work_date as dd/mm/yyyy without mutating the dict in place.
+    # Inline helper so we don't need to import a non-existent dates module
+    # in the current codebase; if `app.dates.to_ddmmyyyy` is added later,
+    # this branch keeps working with a graceful fallback.
+    display = dict(cur_row)
+    if display.get('work_date'):
+        try:
+            wd_raw = display['work_date']
+            if isinstance(wd_raw, str) and len(wd_raw) == 10 and wd_raw[4] == '-':
+                # ISO YYYY-MM-DD -> dd/mm/yyyy
+                display['work_date'] = f"{wd_raw[8:10]}/{wd_raw[5:7]}/{wd_raw[0:4]}"
+            else:
+                display['work_date'] = str(wd_raw)
+        except Exception:
+            pass
+    st.dataframe(pd.DataFrame([display]), width='stretch', hide_index=True)
+
+    with st.expander('Raw fields (JSON)'):
+        st.json(cur_row)
 
 
 def _render_create_form() -> None:
