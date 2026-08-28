@@ -60,6 +60,7 @@
 - [🚦 Troubleshooting](#-troubleshooting)
 - [🔢 Versioning](#-versioning)
 - [📋 Project Layout](#-project-layout)
+- [📤 Push to GitHub](#-push-to-github)
 - [🤝 Contributing](#-contributing)
 - [⚖️ License](#%EF%B8%8F-license)
 
@@ -563,6 +564,64 @@ open-protocol-dashboard/
 ├── 📖 README.md                     (this file)
 └── 📜 CHANGELOG.md                  Versioned change log
 ```
+
+---
+
+## 📤 Push to GitHub
+
+The repo is hosted at `github.com/<owner>/open-protocol-dashboard`. The default remote is **SSH** so contributors with `~/.ssh/config` set up can `git push` without typing anything. If SSH git ops are blocked at the ACL layer (rare, but documented at <https://docs.github.com/en/authentication/troubleshooting-ssh/error-is-not-a-valid-repository-name>), a one-shot PAT push is supported via `.env`.
+
+### Preferred: SSH
+
+```bash
+cd open-protocol-dashboard
+git push origin main            # branch
+git push origin v1.2.10          # tag (matches __version__)
+```
+
+Requires the public key in your GitHub account to be authorized for this repo (Deploy Key with **Allow write access**, or Account-level SSH key).
+
+### Fallback: `.env` + `scripts/push_with_pat.sh`
+
+When SSH is not viable, the project ships a wrapper that reads the PAT from the gitignored `.env`, pushes in env-var-only mode, and wipes the token + bash history.
+
+1. **Generate a token** at <https://github.com/settings/tokens>:
+   - Note: `one-shot push for vX.Y.Z`
+   - Expiration: 7 days (shortest)
+   - Scopes: `repo` only
+
+2. **Save it locally** (file is gitignored, `chmod 600`):
+   ```bash
+   echo 'GITHUB_TOKEN=ghp_…' >> .env
+   chmod 600 .env
+   ```
+
+3. **Push**:
+   ```bash
+   ./scripts/push_with_pat.sh main v1.2.10
+   ```
+
+   Internally:
+   - Reads `GITHUB_TOKEN` from `.env` (gitignored).
+   - Sets `+o history` and unsets `HISTFILE` before exporting.
+   - Resolves the GitHub login via API (PAT in `Authorization: token …` header, never on argv).
+   - Switches remote to `https://x-access-token:<PAT>@github.com/…`.
+   - Pushes branch + tag.
+   - Verifies `git ls-remote origin HEAD == git rev-parse HEAD`.
+   - Restores the SSH remote URL.
+   - `unset GITHUB_TOKEN PUSH_PAT; history -c; : > ~/.bash_history`.
+
+4. **Revoke** the token immediately on GitHub after the push, regardless of TTL.
+
+### What's tracked, what isn't
+
+| File | Tracked | Why |
+|---|---|---|
+| `.env` | ❌ (gitignored) | Holds the PAT. Never committed. |
+| `.env.example` | ✅ | Documents the `GITHUB_TOKEN=<your_pat>` placeholder. |
+| `scripts/push_with_pat.sh` | ✅ | The wrapper itself. |
+| `db_config.json` | ❌ (gitignored) | Setup-tab DB credentials (plaintext host/user/password). |
+| `auth_config.json` | ❌ (gitignored) | Destructive-action password hash. |
 
 ---
 
