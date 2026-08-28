@@ -39,6 +39,7 @@ Design notes:
 from __future__ import annotations
 
 import hashlib
+import hmac
 import os
 import time
 from typing import Optional
@@ -77,8 +78,11 @@ def verify_password(password: str) -> bool:
         return False
     candidate = hashlib.sha256((_SALT + password).encode("utf-8")).hexdigest()
     expected = get_password_hash()
-    # hashlib.compare_digest avoids early-exit timing leaks.
-    return hashlib.compare_digest(candidate, expected)
+    # hmac.compare_digest (NOT hashlib.compare_digest — that attribute
+    # doesn't exist; compare_digest was moved to the hmac module in
+    # Python 3.3). Constant-time-ish comparison avoids early-exit
+    # timing leaks.
+    return hmac.compare_digest(candidate, expected)
 
 
 def is_authenticated(session_state) -> bool:

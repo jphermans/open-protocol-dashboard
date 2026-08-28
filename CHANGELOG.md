@@ -1,3 +1,38 @@
+## [1.2.3] - 2026-08-28
+
+### Fixed
+- **`AttributeError: module 'hashlib' has no attribute 'compare_digest'`
+  on every destructive action** (delete record, save database config).
+  Root cause: `app/auth.py::verify_password()` called
+  `hashlib.compare_digest(...)` for constant-time comparison — but
+  `compare_digest` lives in the **`hmac`** module, not `hashlib`.
+  (`hashlib.sha256`, `hashlib.md5`, etc. are correct — only
+  `compare_digest` got moved to `hmac` in Python 3.3.) The bug shipped
+  silently in v1.2.0 because the original test box had a `hashlib`
+  monkey-patch and never hit the real AttributeError. Fix:
+  `import hmac` + `return hmac.compare_digest(candidate, expected)`.
+
+### Changed
+- **Atlas Copco logo removed from the in-app surfaces** (page favicon,
+  sidebar top, main header). The asset at
+  `assets/atlas_copco_logo.png` is **kept** — still bundled into
+  PyInstaller builds and still displayed at the top of `README.md`.
+  Restored surfaces:
+    * `page_icon` back to the `🔧` wrench emoji.
+    * `render_sidebar()` top slot is now an empty comment placeholder.
+    * `main()` header is again a plain `st.title('🔧 Tool CRUD
+      Dashboard')` + caption stack (no columns-with-logo layout).
+- `__version__` bumped `1.2.2` → `1.2.3` (PATCH per SemVer: UI tweak
+  + bugfix, no behaviour change for the happy path).
+
+### Notes
+- `app/paths.py`'s `LOGO_FILE` constant is kept so a future release can
+  opt back into the logo with a one-line change.
+- The bug class here is worth flagging: anything that imports `hashlib`
+  and then needs constant-time comparison must `import hmac` (or use
+  `secrets.compare_digest`, which is the modern alias in Py 3.5+).
+
+
 ## [1.2.2] - 2026-08-28
 
 ### Added

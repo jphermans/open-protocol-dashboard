@@ -199,7 +199,7 @@ def _safe_df(rows: list[dict], index_col: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 st.set_page_config(
     page_title=f'Tool CRUD Dashboard v{__version__}',
-    page_icon=str(LOGO_FILE) if LOGO_FILE.exists() else '\U0001f527',
+        page_icon='🔧',
     layout='wide',
     initial_sidebar_state='expanded',
 )
@@ -213,11 +213,9 @@ init_db()
 # ---------------------------------------------------------------------------
 def render_sidebar() -> None:
     with st.sidebar:
-        # Logo at the top of the sidebar — keeps branding visible while
-        # the user navigates tabs. Falls back silently if the asset is
-        # missing (e.g. during PyInstaller test runs without --add-data).
-        if LOGO_FILE.exists():
-            st.image(str(LOGO_FILE), width='stretch')
+        # (Logo slot intentionally empty in v1.2.3 — the asset is still
+        # bundled for the README banner; the in-app surfaces go back to
+        # the wrench emoji for a quieter look.)
         st.markdown(f'### {version_string()}')
         st.caption(f'Platform: **{PLATFORM}**')
         st.caption(f'DB: `{get_database_url()}`')
@@ -1037,19 +1035,13 @@ def _render_supported_databases_panel(_appcfg) -> None:
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
-    # Header: logo on the left (when the asset is present), title on the
-    # right. The 1:6 ratio keeps the logo compact while leaving plenty of
-    # room for the heading + caption stack.
-    col_logo, col_title = st.columns([1, 6])
-    with col_logo:
-        if LOGO_FILE.exists():
-            st.image(str(LOGO_FILE), width='stretch')
-    with col_title:
-        st.title('� Tool CRUD Dashboard')
-        st.caption(
-            f'**v{__version__}**  ·  Platform: {PLATFORM}  ·  '
-            f'DB: {"SQLite (local)" if is_sqlite(get_database_url()) else get_database_url()}'
-        )
+    # Header: simple title + caption stack (logo removed in v1.2.3 after
+    # it visually competed with the title; the wrench emoji is back).
+    st.title('🔧 Tool CRUD Dashboard')
+    st.caption(
+        f'**v{__version__}**  ·  Platform: {PLATFORM}  ·  '
+        f'DB: {"SQLite (local)" if is_sqlite(get_database_url()) else get_database_url()}'
+)
 
     render_sidebar()
 
